@@ -1,0 +1,6 @@
+{
+  "name": "The Iteration Lab",
+  "description": "An open educational research network and publication platform bringing students, teachers, research, and software together from idea to impact.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

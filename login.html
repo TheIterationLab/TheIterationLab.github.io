@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join & Access · The Iteration Lab</title>
+  <meta name="description" content="Sign in or join The Iteration Lab open educational research platform.">
+  <link rel="icon" type="image/png" href="/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <style>
+    .auth-page {
+      background-color: var(--bg-subtle);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+    .auth-box {
+      width: 100%;
+      max-width: 460px;
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 36px 32px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+    }
+    @media (max-width: 480px) {
+      .auth-box {
+        padding: 28px 20px;
+      }
+    }
+    .auth-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border-light);
+      margin-bottom: 24px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+    .auth-tab:hover {
+      color: var(--text-main);
+    }
+    .auth-tab.active {
+      color: var(--brand-orange);
+      border-bottom-color: var(--brand-orange);
+    }
+    .auth-panel[hidden],
+    .status-view[hidden] {
+      display: none !important;
+    }
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .field-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+    .field-error {
+      font-size: 12px;
+      color: #B91C1C;
+      font-weight: 500;
+      line-height: 1.4;
+      display: none;
+    }
+    .field-error.visible {
+      display: block;
+    }
+    .input-field[aria-invalid="true"] {
+      border-color: #DC2626;
+    }
+    .input-field[aria-invalid="true"]:focus {
+      border-color: #DC2626;
+      box-shadow: 0 0 0 3px #FEE2E2;
+    }
+
+    /* 2x2 Account Type Radio Grid */
+    .type-fieldset {
+      border: none;
+      padding: 0;
+      margin: 0;
+    }
+    .type-fieldset legend {
+      margin-bottom: 8px;
+      display: block;
+    }
+    .type-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .type-option {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      background-color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+      user-select: none;
+    }
+    .type-option:hover {
+      border-color: #D1D5DB;
+      color: var(--text-main);
+    }
+    .type-option input[type="radio"] {
+      accent-color: var(--brand-orange);
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .type-option.selected {
+      border-color: var(--brand-orange);
+      background-color: var(--brand-orange-light);
+      color: var(--text-main);
+    }
+
+    /* Password Show/Hide wrapper */
+    .pw-field-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .pw-field-wrap .input-field {
+      padding-right: 64px;
+    }
+    .pw-toggle {
+      position: absolute;
+      right: 8px;
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      line-height: 1.2;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .pw-toggle:hover {
+      background-color: #EBEEF2;
+      color: var(--text-main);
+    }
+
+    /* File Input & Preview */
+    .file-input-field {
+      padding: 8px 10px;
+      font-size: 13px;
+      background-color: var(--bg-subtle);
+      cursor: pointer;
+    }
+    .file-input-field::file-selector-button {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      background-color: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 5px 10px;
+      margin-right: 10px;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+    .file-input-field::file-selector-button:hover {
+      background-color: var(--bg-subtle);
+    }
+    .photo-preview-card {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 10px;
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      margin-top: 2px;
+    }
+    .photo-preview-card.visible {
+      display: flex;
+    }
+    .photo-preview-img {
+      width: 64px;
+      height: 46px;
+      object-fit: cover;
+      border-radius: 3px;
+      border: 1px solid var(--border-light);
+      background: #FFFFFF;
+      flex-shrink: 0;
+    }
+    .photo-preview-meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.35;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .photo-preview-name {
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Password & Forgot notes */
+    .password-safety-note {
+      font-size: 12.5px;
+      color: var(--text-secondary);
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      line-height: 1.5;
+    }
+    .forgot-note {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-top: 4px;
+    }
+    .forgot-note a {
+      color: var(--brand-orange);
+      font-weight: 600;
+    }
+    .forgot-note a:hover {
+      color: var(--brand-orange-hover);
+      text-decoration: underline;
+    }
+
+    .btn[disabled] {
+      opacity: 0.72;
+      cursor: not-allowed;
+    }
+
+    /* Account Status View */
+    .status-card {
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .status-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .status-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+    .status-value-name {
+      font-family: var(--font-serif);
+      font-size: 21px;
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.25;
+    }
+    .status-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .status-badge.verified {
+      background-color: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+    }
+    .status-badge.pending {
+      background-color: var(--brand-orange-light);
+      color: #9A3412;
+      border: 1px solid #FED7AA;
+    }
+    .status-badge.incomplete {
+      background-color: #FEF2F2;
+      color: #991B1B;
+      border: 1px solid #FECACA;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-badge.verified .status-dot {
+      background-color: #10B981;
+    }
+    .status-badge.pending .status-dot {
+      background-color: var(--brand-orange);
+    }
+    .status-badge.incomplete .status-dot {
+      background-color: #DC2626;
+    }
+    .status-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body class="auth-page">
+  <main class="auth-box">
+    <!-- Brand Logo Tile -->
+    <a href="/" style="display:inline-flex; align-items:center; gap:12px; margin-bottom:24px;">
+      <div class="brand-icon-tile">
+        <img src="/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral emblem" width="34" height="34">
+      </div>
+      <span class="brand-name">The Iteration Lab</span>
+    </a>
+
+    <h1 style="font-family:var(--font-serif); font-size:24px; font-weight:700; color:var(--text-main); margin-bottom:6px;" id="auth-heading">Log in to The Iteration Lab</h1>
+    <p style="font-size:14px; color:var(--text-secondary); margin-bottom:24px;" id="auth-subtitle">Connect with student researchers, teachers, and open software builders.</p>
+
+    <!-- Auth Tabs & Forms Container -->
+    <div id="auth-forms-container">
+      <!-- ARIA Tablist: Left/Right arrow keys supported -->
+      <div class="auth-tabs" role="tablist" aria-label="Account access">
+        <button
+          type="button"
+          class="auth-tab active"
+          id="tab-login"
+          role="tab"
+          aria-selected="true"
+          aria-controls="panel-login"
+          tabindex="0"
+        >Log in</button>
+        <button
+          type="button"
+          class="auth-tab"
+          id="tab-signup"
+          role="tab"
+          aria-selected="false"
+          aria-controls="panel-signup"
+          tabindex="-1"
+        >Create account</button>
+      </div>
+
+      <!-- TAB PANEL 1: LOG IN -->
+      <div id="panel-login" class="auth-panel" role="tabpanel" aria-labelledby="tab-login">
+        <form id="login-form" class="auth-form" novalidate>
+          <div class="input-group">
+            <label for="login-phone" class="input-label">Phone number</label>
+            <input
+              type="tel"
+              id="login-phone"
+              name="phone"
+              class="input-field"
+              inputmode="tel"
+              autocomplete="tel"
+              placeholder="01XXXXXXXXX"
+              aria-invalid="false"
+              aria-describedby="login-phone-err"
+              required
+            >
+            <div id="login-phone-err" class="field-error"></div>
+          </div>
+
+          <div class="input-group">
+            <label for="login-password" class="input-label">Password</label>
+            <div class="pw-field-wrap">
+              <input
+                type="password"
+                id="login-password"
+                name="password"
+                class="input-field"
+                autocomplete="current-password"
+                placeholder="••••••••"
+                aria-invalid="false"
+                aria-describedby="login-password-err"
+                required
+              >
+              <button
+                type="button"
+                class="pw-toggle"
+                id="login-pw-toggle"
+                aria-label="Show password"
+                aria-pressed="false"
+              >Show</button>
+            </div>
+            <div id="login-password-err" class="field-error"></div>
+          </div>
+
+          <button type="submit" class="btn btn-orange" id="login-submit-btn" style="width:100%; margin-top:4px;">Log in</button>
+
+          <div id="login-alert" class="form-feedback" role="alert" aria-live="polite" style="display:none;"></div>
+
+          <p class="forgot-note">
+            <a
+              id="forgot-whatsapp-link"
+              href="https://wa.me/8801890803091?text=Hello%2C%20I%20need%20help%20with%20my%20Iteration%20Lab%20account."
+              target="_blank"
+              rel="noopener noreferrer"
+            >Forgot your password? Contact the admin on WhatsApp</a>
+          </p>
+        </form>
+      </div>
+
+      <!-- TAB PANEL 2: CREATE ACCOUNT -->
+      <div id="panel-signup" class="auth-panel" role="tabpanel" aria-labelledby="tab-signup" hidden>
+        <form id="signup-form" class="auth-form" novalidate>
+          <!-- 1. Account type (radio group, 2x2) -->
+          <fieldset class="type-fieldset">
+            <legend class="input-label">Account type</legend>
+            <div class="type-grid" id="account-type-group">
+              <label class="type-option selected">
+                <input type="radio" name="account_type" value="S" checked>
+                <span>Student</span>
+              </label>
+              <label class="type-option">
+                <input type="radio" name="account_type" value="T">
+                <span>Teacher</span>
+              </label>
+              <label class="type-option">
+                <input type="radio" name="account_type" value="I">
+                <span>Institution</span>
+              </label>
+              <label class="type-option">
+                <input type="radio" name="account_type" value="R">
+                <span>Independent reader</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- 2. Name -->
+          <div class="input-group">
+            <label for="signup-name" id="signup-name-label" class="input-label">Full name</label>
+            <input
+              type="text"
+              id="signup-name"
+              name="name"
+              class="input-field"
+              autocomplete="name"
+              placeholder="e.g. Tanvir Hossain"
+              aria-invalid="false"
+              aria-describedby="signup-name-err"
+              required
+            >
+            <div id="signup-name-err" class="field-error"></div>
+          </div>
+
+          <!-- 3. Phone number -->
+          <div class="input-group">
+            <label for="signup-phone" id="signup-phone-label" class="input-label">Phone number</label>
+            <input
+              type="tel"
+              id="signup-phone"
+              name="phone"
+              class="input-field"
+              inputmode="tel"
+              autocomplete="tel"
+              placeholder="01XXXXXXXXX"
+              aria-invalid="false"
+              aria-describedby="signup-phone-hint signup-phone-err"
+              required
+            >
+            <div id="signup-phone-hint" class="field-hint">You will log in with this number. Type it with or without the first 0.</div>
+            <div id="signup-phone-err" class="field-error"></div>
+          </div>
+
+          <!-- 4. ID number, by type -->
+          <div class="input-group">
+            <label for="signup-id" id="signup-id-label" class="input-label">SSC registration number (10 digits)</label>
+            <input
+              type="text"
+              id="signup-id"
+              name="id_number"
+              class="input-field"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="10-digit registration number"
+              aria-invalid="false"
+              aria-describedby="signup-id-err"
+              required
+            >
+            <div id="signup-id-err" class="field-error"></div>
+          </div>
+
+          <!-- 5. Password -->
+          <div class="input-group">
+            <label for="signup-password" class="input-label">Password</label>
+            <div class="pw-field-wrap">
+              <input
+                type="password"
+                id="signup-password"
+                name="password"
+                class="input-field"
+                autocomplete="new-password"
+                placeholder="At least 6 characters"
+                minlength="6"
+                aria-invalid="false"
+                aria-describedby="signup-password-err"
+                required
+              >
+              <button
+                type="button"
+                class="pw-toggle"
+                id="signup-pw-toggle"
+                aria-label="Show password"
+                aria-pressed="false"
+              >Show</button>
+            </div>
+            <div id="signup-password-err" class="field-error"></div>
+          </div>
+
+          <!-- 6. ID photo, by type -->
+          <div class="input-group">
+            <label for="signup-photo" id="signup-photo-label" class="input-label">Photo of your SSC registration card</label>
+            <input
+              type="file"
+              id="signup-photo"
+              name="id_photo"
+              class="input-field file-input-field"
+              accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp,.img"
+              aria-invalid="false"
+              aria-describedby="signup-photo-hint signup-photo-err"
+              required
+            >
+            <div id="signup-photo-preview-card" class="photo-preview-card" aria-live="polite">
+              <img id="signup-photo-preview-img" class="photo-preview-img" src="" alt="Selected ID card preview">
+              <div class="photo-preview-meta">
+                <div id="signup-photo-preview-name" class="photo-preview-name"></div>
+                <div id="signup-photo-preview-size"></div>
+              </div>
+            </div>
+            <div id="signup-photo-hint" class="field-hint">Only the admin team can see it. Make sure the text is readable.</div>
+            <div id="signup-photo-err" class="field-error"></div>
+          </div>
+
+          <!-- 7. Password safety note -->
+          <p class="password-safety-note">Use a password you do not use anywhere else. If you forget it, the admin can look it up and send it to you.</p>
+
+          <button type="submit" class="btn btn-orange" id="signup-submit-btn" style="width:100%; margin-top:4px;">Create account</button>
+
+          <div id="signup-alert" class="form-feedback" role="alert" aria-live="polite" style="display:none;"></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- ACCOUNT STATUS VIEW -->
+    <section id="status-view" class="status-view" aria-live="polite" hidden>
+      <!-- Complete account details -->
+      <div id="status-complete-card" class="status-card">
+        <div class="status-row">
+          <span class="status-label">Name</span>
+          <span class="status-value-name" id="status-name">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Account type</span>
+          <span class="status-value" id="status-type">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Verification status</span>
+          <div>
+            <span id="status-verified-badge" class="status-badge pending">
+              <span class="status-dot"></span>
+              <span id="status-verified-text">Pending: the admin team will check your ID card</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Problem state (missing credentials/profiles row or failed request) -->
+      <div id="status-problem-card" class="status-card" hidden>
+        <div id="status-incomplete-badge-wrap" hidden>
+          <span class="status-badge incomplete">
+            <span class="status-dot"></span>
+            <span>Setup incomplete</span>
+          </span>
+        </div>
+        <p style="font-size:13.5px; color:var(--text-secondary); line-height:1.55;">
+          Something is not right with your account. Please contact the admin on WhatsApp so we can fix it.
+        </p>
+        <a
+          id="status-whatsapp-btn"
+          href="https://wa.me/8801890803091?text=Hello%2C%20I%20need%20help%20with%20my%20Iteration%20Lab%20account."
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-orange"
+          style="width:100%;"
+        >Contact admin on WhatsApp</a>
+      </div>
+
+      <div class="status-actions">
+        <button type="button" id="logout-btn" class="btn btn-secondary" style="width:100%;">Log out</button>
+      </div>
+    </section>
+
+    <div style="margin-top:24px; padding-top:16px; border-top:1px solid var(--border-light); text-align:center; font-size:13px; color:var(--text-muted); display:flex; justify-content:space-between;">
+      <a href="/" style="color:var(--brand-orange); font-weight:600;">← Return to Home</a>
+      <a href="/#policies" style="color:var(--text-secondary);">Student Safety & Privacy</a>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const ADMIN_WHATSAPP = '01890803091'; // 01890803091 or @TheIterationLab
+
+      var SUPABASE_URL = 'https://khewlpzdjbdlpqfnqplt.supabase.co';
+      var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoZXdscHpkamJkbHBxZm5xcGx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2ODA2MTgsImV4cCI6MjEwODI1NjYxOH0.GdKBFPXuZ1NacefESgx6YX7FKvnWqGibiQDPteKGGeQ';
+
+      var sb = null;
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      }
+
+      function buildWhatsAppUrl(accountPhone) {
+        var target = String(ADMIN_WHATSAPP || '').trim().replace(/^@/, '');
+        if (/^01[3-9]\d{8}$/.test(target)) {
+          target = '880' + target.slice(1);
+        }
+        var text = 'Hello, I need help with my Iteration Lab account.';
+        if (accountPhone) {
+          text += ' Phone: ' + accountPhone;
+        }
+        return 'https://wa.me/' + target + '?text=' + encodeURIComponent(text);
+      }
+
+      // Account type metadata
+      var TYPE_CONFIG = {
+        S: {
+          display: 'Student',
+          nameLabel: 'Full name',
+          namePlaceholder: 'e.g. Tanvir Hossain',
+          phoneLabel: 'Phone number',
+          idLabel: 'SSC registration number (10 digits)',
+          idPlaceholder: '10-digit registration number',
+          idInputMode: 'numeric',
+          photoLabel: 'Photo of your SSC registration card'
+        },
+        T: {
+          display: 'Teacher',
+          nameLabel: 'Full name',
+          namePlaceholder: 'e.g. Dr. Farhana Rahman',
+          phoneLabel: 'Phone number',
+          idLabel: 'Teacher ID',
+          idPlaceholder: 'Enter your Teacher ID',
+          idInputMode: 'text',
+          photoLabel: 'Photo of your teacher ID card'
+        },
+        I: {
+          display: 'Institution',
+          nameLabel: 'Institution name',
+          namePlaceholder: 'e.g. Notre Dame College, Dhaka',
+          phoneLabel: 'Contact phone number',
+          idLabel: 'EIIN (6 digits)',
+          idPlaceholder: '6-digit EIIN',
+          idInputMode: 'numeric',
+          photoLabel: 'Photo of an official document showing your EIIN (for example the registration certificate or a letter on official letterhead)'
+        },
+        R: {
+          display: 'Independent reader',
+          nameLabel: 'Full name',
+          namePlaceholder: 'e.g. Mahmudul Hasan',
+          phoneLabel: 'Phone number',
+          idLabel: 'NID number (10, 13 or 17 digits)',
+          idPlaceholder: '10, 13, or 17-digit NID number',
+          idInputMode: 'numeric',
+          photoLabel: 'Photo of your NID card'
+        }
+      };
+
+      // DOM elements
+      var authHeading = document.getElementById('auth-heading');
+      var authSubtitle = document.getElementById('auth-subtitle');
+      var authFormsContainer = document.getElementById('auth-forms-container');
+      var statusView = document.getElementById('status-view');
+
+      var tabLogin = document.getElementById('tab-login');
+      var tabSignup = document.getElementById('tab-signup');
+      var panelLogin = document.getElementById('panel-login');
+      var panelSignup = document.getElementById('panel-signup');
+
+      // Login form elements
+      var loginForm = document.getElementById('login-form');
+      var loginPhone = document.getElementById('login-phone');
+      var loginPhoneErr = document.getElementById('login-phone-err');
+      var loginPassword = document.getElementById('login-password');
+      var loginPasswordErr = document.getElementById('login-password-err');
+      var loginPwToggle = document.getElementById('login-pw-toggle');
+      var loginSubmitBtn = document.getElementById('login-submit-btn');
+      var loginAlert = document.getElementById('login-alert');
+
+      // Signup form elements
+      var signupForm = document.getElementById('signup-form');
+      var typeRadios = Array.prototype.slice.call(document.querySelectorAll('input[name="account_type"]'));
+      var signupNameLabel = document.getElementById('signup-name-label');
+      var signupName = document.getElementById('signup-name');
+      var signupNameErr = document.getElementById('signup-name-err');
+      var signupPhoneLabel = document.getElementById('signup-phone-label');
+      var signupPhone = document.getElementById('signup-phone');
+      var signupPhoneErr = document.getElementById('signup-phone-err');
+      var signupIdLabel = document.getElementById('signup-id-label');
+      var signupId = document.getElementById('signup-id');
+      var signupIdErr = document.getElementById('signup-id-err');
+      var signupPassword = document.getElementById('signup-password');
+      var signupPasswordErr = document.getElementById('signup-password-err');
+      var signupPwToggle = document.getElementById('signup-pw-toggle');
+      var signupPhotoLabel = document.getElementById('signup-photo-label');
+      var signupPhoto = document.getElementById('signup-photo');
+      var signupPhotoErr = document.getElementById('signup-photo-err');
+      var previewCard = document.getElementById('signup-photo-preview-card');
+      var previewImg = document.getElementById('signup-photo-preview-img');
+      var previewName = document.getElementById('signup-photo-preview-name');
+      var previewSize = document.getElementById('signup-photo-preview-size');
+      var signupSubmitBtn = document.getElementById('signup-submit-btn');
+      var signupAlert = document.getElementById('signup-alert');
+
+      // Status view & WhatsApp elements
+      var forgotWhatsappLink = document.getElementById('forgot-whatsapp-link');
+      var statusCompleteCard = document.getElementById('status-complete-card');
+      var statusProblemCard = document.getElementById('status-problem-card');
+      var statusIncompleteBadgeWrap = document.getElementById('status-incomplete-badge-wrap');
+      var statusWhatsappBtn = document.getElementById('status-whatsapp-btn');
+      var statusName = document.getElementById('status-name');
+      var statusType = document.getElementById('status-type');
+      var statusVerifiedBadge = document.getElementById('status-verified-badge');
+      var statusVerifiedText = document.getElementById('status-verified-text');
+      var logoutBtn = document.getElementById('logout-btn');
+
+      if (forgotWhatsappLink) {
+        forgotWhatsappLink.href = buildWhatsAppUrl('');
+      }
+
+      var currentPreviewUrl = null;
+
+      // Safe history.replaceState wrapper for sandboxed previews
+      function safeReplaceHash(hash) {
+        try {
+          var nextUrl = hash
+            ? window.location.pathname + window.location.search + hash
+            : window.location.pathname + window.location.search;
+          window.history.replaceState(null, '', nextUrl);
+        } catch (err) {
+          // Ignore SecurityError in sandboxed iframe environments
+        }
+      }
+
+      // Phone normalization (Section 3)
+      function normalizePhone(raw) {
+        var digits = String(raw || '').replace(/\D/g, '');
+        if (digits.indexOf('880') === 0) {
+          digits = digits.slice(3);
+        }
+        if (digits.indexOf('0') === 0) {
+          digits = digits.slice(1);
+        }
+        if (!/^1[3-9]\d{8}$/.test(digits)) {
+          return {
+            valid: false,
+            digits: '',
+            e164: '',
+            error: 'Enter a valid phone number, like 01XXXXXXXXX.'
+          };
+        }
+        return {
+          valid: true,
+          digits: digits,
+          e164: '+880' + digits,
+          error: ''
+        };
+      }
+
+      function getAccountPhoneForWhatsApp(user) {
+        var raw = (user && user.phone) ? String(user.phone) : '';
+        if (!raw) return '';
+        var norm = normalizePhone(raw);
+        if (norm.valid) {
+          return '0' + norm.digits;
+        }
+        return raw;
+      }
+
+      // Friendly error formatting
+      function isNetworkFailure(err) {
+        if (!navigator.onLine) return true;
+        var msg = String((err && (err.message || err.error_description)) || err || '');
+        return /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(msg);
+      }
+
+      function classifyFormError(err) {
+        if (isNetworkFailure(err)) {
+          return {
+            message: 'No connection. Check your internet and try again.',
+            unexpected: false
+          };
+        }
+        var rawMsg = String((err && (err.message || err.error_description)) || err || '');
+        var code = String((err && err.code) || '');
+        var combined = String((err && err.details) || '') + ' ' + String((err && err.hint) || '') + ' ' + rawMsg;
+
+        if (code === 'invalid_credentials' || /invalid login credentials/i.test(rawMsg)) {
+          return {
+            message: 'Wrong phone number or password.',
+            unexpected: false
+          };
+        }
+
+        if (/(sid_key|tid_key|type_tid_key)/i.test(combined)) {
+          return {
+            message: 'This ID number is already registered. Text the admin if it is yours.',
+            unexpected: false
+          };
+        }
+
+        console.error(err);
+        return {
+          message: 'Something is not right with your account. Please contact the admin on WhatsApp so we can fix it.',
+          unexpected: true
+        };
+      }
+
+      // Inline field validation helpers
+      function setFieldError(inputEl, errEl, message) {
+        if (message) {
+          inputEl.setAttribute('aria-invalid', 'true');
+          errEl.textContent = message;
+          errEl.classList.add('visible');
+        } else {
+          inputEl.setAttribute('aria-invalid', 'false');
+          errEl.textContent = '';
+          errEl.classList.remove('visible');
+        }
+      }
+
+      function setAlert(alertEl, message, kind, showWhatsAppBtn) {
+        while (alertEl.firstChild) {
+          alertEl.removeChild(alertEl.firstChild);
+        }
+        if (!message) {
+          alertEl.style.display = 'none';
+          alertEl.className = 'form-feedback';
+          return;
+        }
+        var textNode = document.createElement('div');
+        textNode.textContent = message;
+        alertEl.appendChild(textNode);
+
+        if (showWhatsAppBtn) {
+          var waBtn = document.createElement('a');
+          waBtn.href = buildWhatsAppUrl('');
+          waBtn.target = '_blank';
+          waBtn.rel = 'noopener noreferrer';
+          waBtn.className = 'btn btn-orange';
+          waBtn.style.width = '100%';
+          waBtn.style.marginTop = '10px';
+          waBtn.textContent = 'Contact admin on WhatsApp';
+          alertEl.appendChild(waBtn);
+        }
+
+        alertEl.className = 'form-feedback ' + (kind || 'error');
+        alertEl.style.display = 'block';
+      }
+
+      function showFormError(alertEl, err) {
+        var info = classifyFormError(err);
+        setAlert(alertEl, info.message, 'error', info.unexpected);
+      }
+
+      // Password Show/Hide wiring
+      function wirePasswordToggle(inputEl, btnEl) {
+        btnEl.addEventListener('click', function () {
+          var showing = inputEl.type === 'text';
+          if (showing) {
+            inputEl.type = 'password';
+            btnEl.textContent = 'Show';
+            btnEl.setAttribute('aria-pressed', 'false');
+            btnEl.setAttribute('aria-label', 'Show password');
+          } else {
+            inputEl.type = 'text';
+            btnEl.textContent = 'Hide';
+            btnEl.setAttribute('aria-pressed', 'true');
+            btnEl.setAttribute('aria-label', 'Hide password');
+          }
+        });
+      }
+
+      wirePasswordToggle(loginPassword, loginPwToggle);
+      wirePasswordToggle(signupPassword, signupPwToggle);
+
+      // Tabs switching + ARIA keyboard navigation
+      function activateTab(mode, moveFocus, updateUrl) {
+        var isSignup = mode === 'signup';
+        statusView.hidden = true;
+        authFormsContainer.hidden = false;
+
+        tabLogin.classList.toggle('active', !isSignup);
+        tabLogin.setAttribute('aria-selected', isSignup ? 'false' : 'true');
+        tabLogin.setAttribute('tabindex', isSignup ? '-1' : '0');
+
+        tabSignup.classList.toggle('active', isSignup);
+        tabSignup.setAttribute('aria-selected', isSignup ? 'true' : 'false');
+        tabSignup.setAttribute('tabindex', isSignup ? '0' : '-1');
+
+        panelLogin.hidden = isSignup;
+        panelSignup.hidden = !isSignup;
+
+        authHeading.textContent = isSignup ? 'Join us & Publish yours' : 'Log in to The Iteration Lab';
+        authSubtitle.textContent = 'Connect with student researchers, teachers, and open software builders.';
+
+        setAlert(loginAlert, '');
+        setAlert(signupAlert, '');
+
+        if (updateUrl !== false) {
+          safeReplaceHash(isSignup ? '#signup' : '');
+        }
+        if (moveFocus) {
+          (isSignup ? tabSignup : tabLogin).focus();
+        }
+      }
+
+      tabLogin.addEventListener('click', function () {
+        activateTab('login', false, true);
+      });
+
+      tabSignup.addEventListener('click', function () {
+        activateTab('signup', false, true);
+      });
+
+      function handleTabKeydown(e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          var nextMode = document.activeElement === tabLogin ? 'signup' : 'login';
+          activateTab(nextMode, true, true);
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          activateTab('login', true, true);
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          activateTab('signup', true, true);
+        }
+      }
+
+      tabLogin.addEventListener('keydown', handleTabKeydown);
+      tabSignup.addEventListener('keydown', handleTabKeydown);
+
+      window.addEventListener('hashchange', function () {
+        if (!statusView.hidden) return;
+        if (window.location.hash === '#signup') {
+          activateTab('signup', false, false);
+        } else {
+          activateTab('login', false, false);
+        }
+      });
+
+      // Dynamic Account Type updates
+      function getSelectedType() {
+        for (var i = 0; i < typeRadios.length; i++) {
+          if (typeRadios[i].checked) return typeRadios[i].value;
+        }
+        return 'S';
+      }
+
+      function syncAccountTypeUI() {
+        var type = getSelectedType();
+        var cfg = TYPE_CONFIG[type] || TYPE_CONFIG.S;
+
+        for (var i = 0; i < typeRadios.length; i++) {
+          var label = typeRadios[i].closest('.type-option');
+          if (label) {
+            label.classList.toggle('selected', typeRadios[i].checked);
+          }
+        }
+
+        signupNameLabel.textContent = cfg.nameLabel;
+        signupName.placeholder = cfg.namePlaceholder;
+        signupPhoneLabel.textContent = cfg.phoneLabel;
+        signupIdLabel.textContent = cfg.idLabel;
+        signupId.placeholder = cfg.idPlaceholder;
+        signupId.setAttribute('inputmode', cfg.idInputMode);
+        signupPhotoLabel.textContent = cfg.photoLabel;
+
+        // Clear stale dynamic field errors on switch
+        setFieldError(signupName, signupNameErr, '');
+        setFieldError(signupId, signupIdErr, '');
+        setFieldError(signupPhoto, signupPhotoErr, '');
+      }
+
+      for (var i = 0; i < typeRadios.length; i++) {
+        typeRadios[i].addEventListener('change', syncAccountTypeUI);
+      }
+
+      // Clear individual field error when user edits field
+      loginPhone.addEventListener('input', function () { setFieldError(loginPhone, loginPhoneErr, ''); });
+      loginPassword.addEventListener('input', function () { setFieldError(loginPassword, loginPasswordErr, ''); });
+      signupName.addEventListener('input', function () { setFieldError(signupName, signupNameErr, ''); });
+      signupPhone.addEventListener('input', function () { setFieldError(signupPhone, signupPhoneErr, ''); });
+      signupId.addEventListener('input', function () { setFieldError(signupId, signupIdErr, ''); });
+      signupPassword.addEventListener('input', function () { setFieldError(signupPassword, signupPasswordErr, ''); });
+
+      // Photo validation & preview
+      var MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4 MB
+
+      function resolvePhotoMeta(file) {
+        if (!file) return null;
+        var mime = String(file.type || '').toLowerCase();
+        var name = String(file.name || '').toLowerCase();
+        var extMatch = name.match(/\.([a-z0-9]+)$/);
+        var ext = extMatch ? extMatch[1] : '';
+
+        var allowedExt = ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp' || ext === 'img';
+        var allowedMime =
+          mime === 'image/jpeg' ||
+          mime === 'image/jpg' ||
+          mime === 'image/png' ||
+          mime === 'image/webp';
+
+        if (!allowedMime && !(allowedExt && (!mime || mime === 'application/octet-stream' || mime.indexOf('image/') === 0))) {
+          return null;
+        }
+
+        // Reject explicitly disallowed extensions even if browser guessed a generic mime
+        if (ext && !allowedExt) {
+          return null;
+        }
+
+        var storageExt = 'jpg';
+        var fallbackContentType = 'image/jpeg';
+        if (mime === 'image/png' || ext === 'png') {
+          storageExt = 'png';
+          fallbackContentType = 'image/png';
+        } else if (mime === 'image/webp' || ext === 'webp') {
+          storageExt = 'webp';
+          fallbackContentType = 'image/webp';
+        }
+
+        return {
+          storageExt: storageExt,
+          contentType: file.type || fallbackContentType
+        };
+      }
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+      }
+
+      function clearPhotoPreview() {
+        if (currentPreviewUrl) {
+          URL.revokeObjectURL(currentPreviewUrl);
+          currentPreviewUrl = null;
+        }
+        previewImg.removeAttribute('src');
+        previewName.textContent = '';
+        previewSize.textContent = '';
+        previewCard.classList.remove('visible');
+      }
+
+      signupPhoto.addEventListener('change', function () {
+        clearPhotoPreview();
+        var file = signupPhoto.files && signupPhoto.files[0];
+        if (!file) {
+          setFieldError(signupPhoto, signupPhotoErr, '');
+          return;
+        }
+
+        var meta = resolvePhotoMeta(file);
+        if (!meta) {
+          setFieldError(signupPhoto, signupPhotoErr, 'Choose a JPG, JPEG, PNG, IMG, or WebP image.');
+          return;
+        }
+        if (file.size > MAX_PHOTO_BYTES) {
+          setFieldError(signupPhoto, signupPhotoErr, 'Photo must be 4 MB or smaller.');
+          return;
+        }
+
+        setFieldError(signupPhoto, signupPhotoErr, '');
+        currentPreviewUrl = URL.createObjectURL(file);
+        previewImg.src = currentPreviewUrl;
+        previewName.textContent = file.name;
+        previewSize.textContent = formatBytes(file.size);
+        previewCard.classList.add('visible');
+      });
+
+      // Browser image compression (Section 5.1: canvas, max side 1000 px, WebP, quality 0.7, createImageBitmap)
+      async function compressIdPhoto(file) {
+        var bitmap = null;
+        var drawSource = null;
+        var width = 0;
+        var height = 0;
+
+        if (typeof window.createImageBitmap === 'function') {
+          bitmap = await window.createImageBitmap(file);
+          width = bitmap.width;
+          height = bitmap.height;
+          drawSource = bitmap;
+        } else {
+          var imgEl = await new Promise(function (resolve, reject) {
+            var img = new Image();
+            var url = URL.createObjectURL(file);
+            img.onload = function () {
+              URL.revokeObjectURL(url);
+              resolve(img);
+            };
+            img.onerror = function () {
+              URL.revokeObjectURL(url);
+              reject(new Error('Selected ID photo could not be read as an image.'));
+            };
+            img.src = url;
+          });
+          width = imgEl.naturalWidth || imgEl.width;
+          height = imgEl.naturalHeight || imgEl.height;
+          drawSource = imgEl;
+        }
+
+        try {
+          var maxSide = 1000;
+          if (width > maxSide || height > maxSide) {
+            if (width >= height) {
+              height = Math.max(1, Math.round((height * maxSide) / width));
+              width = maxSide;
+            } else {
+              width = Math.max(1, Math.round((width * maxSide) / height));
+              height = maxSide;
+            }
+          }
+
+          var canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          var ctx = canvas.getContext('2d');
+          if (!ctx) {
+            throw new Error('Canvas image processing is unavailable in this browser.');
+          }
+          ctx.drawImage(drawSource, 0, 0, width, height);
+
+          var webpBlob = await new Promise(function (resolve, reject) {
+            canvas.toBlob(
+              function (blob) {
+                if (blob) resolve(blob);
+                else reject(new Error('Could not compress ID photo.'));
+              },
+              'image/webp',
+              0.7
+            );
+          });
+
+          return webpBlob;
+        } finally {
+          if (bitmap && typeof bitmap.close === 'function') {
+            bitmap.close();
+          }
+        }
+      }
+
+      function validateIdByType(type, rawVal) {
+        var val = String(rawVal || '').trim();
+        if (type === 'S') {
+          if (!/^\d{10}$/.test(val)) {
+            return 'Enter your 10-digit SSC registration number (digits only).';
+          }
+          return '';
+        }
+        if (type === 'T') {
+          if (!val) {
+            return 'Enter your Teacher ID.';
+          }
+          return '';
+        }
+        if (type === 'I') {
+          if (!/^\d{6}$/.test(val)) {
+            return 'Enter your 6-digit EIIN (digits only).';
+          }
+          return '';
+        }
+        if (type === 'R') {
+          if (!/^\d+$/.test(val) || (val.length !== 10 && val.length !== 13 && val.length !== 17)) {
+            return 'Enter a valid NID number (10, 13 or 17 digits).';
+          }
+          return '';
+        }
+        return 'Select a valid account type.';
+      }
+
+      // Ensure Supabase client is initialized (handles slow/offline script load)
+      function ensureSupabaseClient() {
+        if (sb) return sb;
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+          sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          return sb;
+        }
+        var netErr = new Error('Failed to fetch');
+        throw netErr;
+      }
+
+      // Load Account Status View (states: Verified, Pending, or Problem)
+      async function loadStatusView(user) {
+        authFormsContainer.hidden = true;
+        statusView.hidden = false;
+
+        var accountPhone = getAccountPhoneForWhatsApp(user);
+        statusWhatsappBtn.href = buildWhatsAppUrl(accountPhone);
+
+        authHeading.textContent = 'Account Status';
+        authSubtitle.textContent = 'Your Iteration Lab membership and verification details.';
+
+        try {
+          var client = ensureSupabaseClient();
+          var uid = user.id;
+
+          var results = await Promise.all([
+            client.from('credentials').select('type, verified').eq('cid', uid).maybeSingle(),
+            client.from('profiles').select('name').eq('cid', uid).maybeSingle()
+          ]);
+
+          var credRes = results[0];
+          var profRes = results[1];
+
+          if (credRes.error) throw credRes.error;
+          if (profRes.error) throw profRes.error;
+
+          var cred = credRes.data;
+          var prof = profRes.data;
+
+          // Show "Setup incomplete" ONLY if credentials row or profiles row is missing
+          if (!cred || !prof) {
+            authHeading.textContent = 'Setup incomplete';
+            statusCompleteCard.hidden = true;
+            statusIncompleteBadgeWrap.hidden = false;
+            statusProblemCard.hidden = false;
+            return;
+          }
+
+          statusProblemCard.hidden = true;
+          statusIncompleteBadgeWrap.hidden = true;
+          statusCompleteCard.hidden = false;
+
+          var typeInfo = TYPE_CONFIG[cred.type];
+          statusName.textContent = prof.name;
+          statusType.textContent = typeInfo ? typeInfo.display : cred.type;
+
+          var isVerified = Number(cred.verified) === 1 || cred.verified === true;
+          if (isVerified) {
+            statusVerifiedBadge.className = 'status-badge verified';
+            statusVerifiedText.textContent = 'Verified: your profile is live';
+          } else {
+            statusVerifiedBadge.className = 'status-badge pending';
+            statusVerifiedText.textContent = 'Pending: the admin team will check your ID card';
+          }
+        } catch (err) {
+          console.error(err);
+          authHeading.textContent = 'Account Status';
+          statusCompleteCard.hidden = true;
+          statusIncompleteBadgeWrap.hidden = true;
+          statusProblemCard.hidden = false;
+        }
+      }
+
+      // Log out button
+      logoutBtn.addEventListener('click', async function () {
+        logoutBtn.disabled = true;
+        logoutBtn.textContent = 'Logging out…';
+        try {
+          var client = ensureSupabaseClient();
+          await client.auth.signOut();
+        } catch (err) {
+          console.error(err);
+        } finally {
+          logoutBtn.disabled = false;
+          logoutBtn.textContent = 'Log out';
+          loginPassword.value = '';
+          signupPassword.value = '';
+          activateTab('login', false, true);
+        }
+      });
+
+      // LOG IN SUBMIT
+      loginForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        setAlert(loginAlert, '');
+
+        var firstInvalid = null;
+
+        var phoneResult = normalizePhone(loginPhone.value);
+        if (!phoneResult.valid) {
+          setFieldError(loginPhone, loginPhoneErr, phoneResult.error);
+          if (!firstInvalid) firstInvalid = loginPhone;
+        } else {
+          setFieldError(loginPhone, loginPhoneErr, '');
+        }
+
+        var passwordVal = loginPassword.value;
+        if (!passwordVal) {
+          setFieldError(loginPassword, loginPasswordErr, 'Enter your password.');
+          if (!firstInvalid) firstInvalid = loginPassword;
+        } else {
+          setFieldError(loginPassword, loginPasswordErr, '');
+        }
+
+        if (firstInvalid) {
+          setAlert(loginAlert, 'Please check the highlighted fields above.', 'error');
+          firstInvalid.focus();
+          return;
+        }
+
+        loginSubmitBtn.disabled = true;
+        loginSubmitBtn.textContent = 'Logging in…';
+
+        try {
+          var client = ensureSupabaseClient();
+          var res = await client.auth.signInWithPassword({
+            phone: phoneResult.e164,
+            password: passwordVal
+          });
+
+          if (res.error) {
+            showFormError(loginAlert, res.error);
+            return;
+          }
+
+          if (!res.data || !res.data.user) {
+            setAlert(loginAlert, 'Wrong phone number or password.', 'error');
+            return;
+          }
+
+          loginPassword.value = '';
+          await loadStatusView(res.data.user);
+        } catch (err) {
+          showFormError(loginAlert, err);
+        } finally {
+          loginSubmitBtn.disabled = false;
+          loginSubmitBtn.textContent = 'Log in';
+        }
+      });
+
+      // CREATE ACCOUNT SUBMIT (Exact order from Section 5)
+      signupForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        setAlert(signupAlert, '');
+
+        var accountType = getSelectedType();
+        var nameVal = signupName.value.trim();
+        var phoneResult = normalizePhone(signupPhone.value);
+        var idVal = signupId.value.trim();
+        var passwordVal = signupPassword.value;
+        var photoFile = signupPhoto.files && signupPhoto.files[0];
+
+        var firstInvalid = null;
+
+        // 2. Name check
+        if (!nameVal) {
+          setFieldError(
+            signupName,
+            signupNameErr,
+            accountType === 'I' ? 'Enter the institution name.' : 'Enter your full name.'
+          );
+          if (!firstInvalid) firstInvalid = signupName;
+        } else {
+          setFieldError(signupName, signupNameErr, '');
+        }
+
+        // 3. Phone check
+        if (!phoneResult.valid) {
+          setFieldError(signupPhone, signupPhoneErr, phoneResult.error);
+          if (!firstInvalid) firstInvalid = signupPhone;
+        } else {
+          setFieldError(signupPhone, signupPhoneErr, '');
+        }
+
+        // 4. ID check by type
+        var idErrMsg = validateIdByType(accountType, idVal);
+        if (idErrMsg) {
+          setFieldError(signupId, signupIdErr, idErrMsg);
+          if (!firstInvalid) firstInvalid = signupId;
+        } else {
+          setFieldError(signupId, signupIdErr, '');
+        }
+
+        // 5. Password check (min 6 characters)
+        if (!passwordVal || passwordVal.length < 6) {
+          setFieldError(signupPassword, signupPasswordErr, 'Password must be at least 6 characters.');
+          if (!firstInvalid) firstInvalid = signupPassword;
+        } else {
+          setFieldError(signupPassword, signupPasswordErr, '');
+        }
+
+        // 6. ID photo check
+        var photoMeta = null;
+        if (!photoFile) {
+          setFieldError(signupPhoto, signupPhotoErr, 'Select a photo of your ID document.');
+          if (!firstInvalid) firstInvalid = signupPhoto;
+        } else {
+          photoMeta = resolvePhotoMeta(photoFile);
+          if (!photoMeta) {
+            setFieldError(signupPhoto, signupPhotoErr, 'Choose a JPG, JPEG, PNG, IMG, or WebP image.');
+            if (!firstInvalid) firstInvalid = signupPhoto;
+          } else if (photoFile.size > MAX_PHOTO_BYTES) {
+            setFieldError(signupPhoto, signupPhotoErr, 'Photo must be 4 MB or smaller.');
+            if (!firstInvalid) firstInvalid = signupPhoto;
+          } else {
+            setFieldError(signupPhoto, signupPhotoErr, '');
+          }
+        }
+
+        if (firstInvalid) {
+          setAlert(signupAlert, 'Please fix the highlighted fields above.', 'error');
+          firstInvalid.focus();
+          return;
+        }
+
+        function setProgress(stepText) {
+          signupSubmitBtn.disabled = true;
+          signupSubmitBtn.textContent = stepText;
+        }
+
+        try {
+          var client = ensureSupabaseClient();
+
+          // Step 1: Compress the photo in the browser
+          setProgress('Preparing your photo…');
+          var compressedBlob = await compressIdPhoto(photoFile);
+
+          // Step 2: sb.auth.signUp({ phone: "+880" + digits, password })
+          setProgress('Creating your account…');
+          var signUpRes = await client.auth.signUp({
+            phone: phoneResult.e164,
+            password: passwordVal
+          });
+
+          var authedUser = null;
+          var needCredentialsInsert = true;
+          var needProfilesInsert = true;
+          var profileTypeToUse = accountType;
+
+          if (signUpRes.error) {
+            var errMsg = String(signUpRes.error.message || signUpRes.error.code || '');
+            var isAlreadyRegistered = /already registered|already exists|user_already_exists|phone_exists/i.test(errMsg);
+
+            if (!isAlreadyRegistered) {
+              showFormError(signupAlert, signUpRes.error);
+              return;
+            }
+
+            // Silent resumable signup: try signInWithPassword with same phone and password
+            var signInRes = await client.auth.signInWithPassword({
+              phone: phoneResult.e164,
+              password: passwordVal
+            });
+
+            if (signInRes.error || !signInRes.data || !signInRes.data.user) {
+              if (signInRes.error && isNetworkFailure(signInRes.error)) {
+                setAlert(signupAlert, 'No connection. Check your internet and try again.', 'error');
+              } else {
+                setAlert(signupAlert, 'This phone number is already registered. Log in, or text the admin.', 'error');
+              }
+              return;
+            }
+
+            authedUser = signInRes.data.user;
+
+            // Check which rows already exist for this uid
+            var existingChecks = await Promise.all([
+              client.from('credentials').select('cid,type').eq('cid', authedUser.id).maybeSingle(),
+              client.from('profiles').select('cid').eq('cid', authedUser.id).maybeSingle()
+            ]);
+
+            if (existingChecks[0].error) throw existingChecks[0].error;
+            if (existingChecks[1].error) throw existingChecks[1].error;
+
+            var existingCred = existingChecks[0].data;
+            var existingProf = existingChecks[1].data;
+
+            if (existingCred) {
+              needCredentialsInsert = false;
+              profileTypeToUse = existingCred.type;
+            }
+            if (existingProf) {
+              needProfilesInsert = false;
+            }
+          } else {
+            // Confirm SMS verification is OFF and session returned immediately
+            if (!signUpRes.data || !signUpRes.data.session || !signUpRes.data.user) {
+              setAlert(
+                signupAlert,
+                'Phone confirmation is still on in Supabase. Turn it off, then try again.',
+                'error'
+              );
+              return;
+            }
+            authedUser = signUpRes.data.user;
+          }
+
+          var uid = authedUser.id;
+
+          // Step 3 & Step 4: Upload ID images and insert into "credentials" (if missing)
+          if (needCredentialsInsert) {
+            setProgress('Uploading your ID card…');
+            var ts = Date.now();
+            var compressedPath = uid + '/id_c_' + ts + '.webp';
+            var originalPath = uid + '/id_r_' + ts + '.' + photoMeta.storageExt;
+
+            var uploadCompRes = await client.storage
+              .from('id-cards')
+              .upload(compressedPath, compressedBlob, {
+                contentType: 'image/webp',
+                upsert: false
+              });
+            if (uploadCompRes.error) throw uploadCompRes.error;
+
+            var uploadOrigRes = await client.storage
+              .from('id-cards')
+              .upload(originalPath, photoFile, {
+                contentType: photoMeta.contentType,
+                upsert: false
+              });
+            if (uploadOrigRes.error) throw uploadOrigRes.error;
+
+            // Step 4: Insert into "credentials" (do NOT send "verified"; do NOT select back password)
+            setProgress('Saving your details…');
+            var credPayload = {
+              cid: uid,
+              type: accountType,
+              phone: phoneResult.digits,
+              password: passwordVal,
+              sid: accountType === 'S' ? idVal : null,
+              tid: accountType === 'S' ? null : idVal,
+              id_image_c: compressedPath,
+              id_image_r: originalPath
+            };
+
+            var credInsertRes = await client.from('credentials').insert(credPayload);
+            if (credInsertRes.error) throw credInsertRes.error;
+          }
+
+          // Step 5: Insert into "profiles" AFTER credentials insert (if missing)
+          if (needProfilesInsert) {
+            setProgress('Saving your details…');
+            var profPayload = {
+              cid: uid,
+              type: profileTypeToUse,
+              name: nameVal
+            };
+
+            var profInsertRes = await client.from('profiles').insert(profPayload);
+            if (profInsertRes.error) throw profInsertRes.error;
+          }
+
+          // Step 6: Clear sensitive input & load account status view
+          signupPassword.value = '';
+          signupForm.reset();
+          clearPhotoPreview();
+          syncAccountTypeUI();
+
+          await loadStatusView(authedUser);
+        } catch (err) {
+          showFormError(signupAlert, err);
+        } finally {
+          signupSubmitBtn.disabled = false;
+          signupSubmitBtn.textContent = 'Create account';
+        }
+      });
+
+      // Initial boot: sync UI, check hash, and check existing Supabase session
+      syncAccountTypeUI();
+      if (window.location.hash === '#signup') {
+        activateTab('signup', false, false);
+      } else {
+        activateTab('login', false, false);
+      }
+
+      (async function initSession() {
+        if (!sb) return;
+        try {
+          var sessionRes = await sb.auth.getSession();
+          var session = sessionRes && sessionRes.data && sessionRes.data.session;
+          if (session && session.user) {
+            await loadStatusView(session.user);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>
