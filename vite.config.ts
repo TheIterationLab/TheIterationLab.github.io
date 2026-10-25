@@ -6,7 +6,7 @@ function copyRootStaticDirs() {
   return {
     name: 'copy-root-static-dirs',
     closeBundle() {
-      const staticDirs = ['leaders/img', 'profile', 'profiles'];
+      const staticDirs = ['public', 'leaders/img', 'profile', 'profiles'];
       for (const dir of staticDirs) {
         const src = resolve(__dirname, dir);
         const dest = resolve(__dirname, 'dist', dir);
@@ -20,6 +20,7 @@ function copyRootStaticDirs() {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  publicDir: false,
   plugins: [copyRootStaticDirs()],
   server: {
     host: '0.0.0.0',

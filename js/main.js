@@ -102,7 +102,7 @@ function renderPublications() {
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
-          <img src="/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
+          <img src="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
         </div>
         <h3 class="shelf-dark-title">Explore All Research & Journals</h3>
         <p class="shelf-dark-desc">Search through peer-reviewed papers, experimental datasets, and student preprints across all disciplines.</p>
@@ -160,7 +160,7 @@ function renderSoftware() {
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
-          <img src="/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
+          <img src="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
         </div>
         <h3 class="shelf-dark-title">Explore All Software Builds</h3>
         <p class="shelf-dark-desc">Browse in-browser tools, firmware repositories, hardware visualizers, and student code libraries.</p>
@@ -212,7 +212,7 @@ function renderPartners() {
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
-          <img src="/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
+          <img src="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
         </div>
         <h3 class="shelf-dark-title">Explore All Partners</h3>
         <p class="shelf-dark-desc">Connect your high school, college, or university lab with our open publication network.</p>
@@ -668,7 +668,7 @@ function renderTeachers() {
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
-          <img src="/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
+          <img src="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
         </div>
         <h3 class="shelf-dark-title">Explore All Teacher Profiles</h3>
         <p class="shelf-dark-desc">Connect with verified academic evaluators, subject specialists, and educators across the network.</p>
@@ -718,7 +718,7 @@ function renderStudents() {
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
-          <img src="/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
+          <img src="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
         </div>
         <h3 class="shelf-dark-title">Explore All Student Profiles</h3>
         <p class="shelf-dark-desc">Discover student authors, project creators, and research collaborators from secondary to university levels.</p>
@@ -764,7 +764,7 @@ function renderEvents(type = 'upcoming') {
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
-          <img src="/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
+          <img src="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Spiral icon">
         </div>
         <h3 class="shelf-dark-title">Explore All Events</h3>
         <p class="shelf-dark-desc">Participate in monthly research presentations, code walkthroughs, and peer review roundtables.</p>
