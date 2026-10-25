@@ -7,3 +7,14 @@ export const FOUNDER_PORTFOLIO_URL = 'https://ikramulhoque-arik.github.io';
 export const FOUNDER_PROFILE_URL = '/profile/S/ikramulhoquearik';
 export const WHATSAPP_URL = 'https://wa.me/TheIterationLab';
 export const WHATSAPP_NUMBER = 'TheIterationLab';
+
+// Default local image folders when Supabase stores filenames only (e.g. "Arik.webp")
+export const IMAGE_DIRS = {
+  leaders: '/leaders/img/',
+  students: '/students/img/',
+  teachers: '/teachers/img/',
+  institutes: '/institutes/img/',
+  researches: '/researches/img/',
+  softwares: '/softwares/img/',
+  communities: '/communities/img/'
+};

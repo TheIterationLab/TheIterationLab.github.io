@@ -14,7 +14,8 @@ import {
   FOUNDER_PORTFOLIO_URL,
   FOUNDER_PROFILE_URL,
   WHATSAPP_URL,
-  WHATSAPP_NUMBER
+  WHATSAPP_NUMBER,
+  IMAGE_DIRS
 } from './config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -108,7 +109,7 @@ function renderPublications() {
         <p class="shelf-dark-desc">Search through peer-reviewed papers, experimental datasets, and student preprints across all disciplines.</p>
       </div>
       <div class="shelf-dark-buttons">
-        <a href="#research" class="btn btn-orange">Explore Research Archives</a>
+        <a href="/researches/" class="btn btn-orange">Explore Research Archives</a>
         <a href="login.html" class="btn btn-dark">Publish your papers</a>
       </div>
     </div>
@@ -166,7 +167,7 @@ function renderSoftware() {
         <p class="shelf-dark-desc">Browse in-browser tools, firmware repositories, hardware visualizers, and student code libraries.</p>
       </div>
       <div class="shelf-dark-buttons">
-        <a href="#software" class="btn btn-orange">Explore Software Registries</a>
+        <a href="/softwares/" class="btn btn-orange">Explore Software Registries</a>
         <a href="login.html" class="btn btn-dark">Publish your Softwares</a>
       </div>
     </div>
@@ -218,7 +219,7 @@ function renderPartners() {
         <p class="shelf-dark-desc">Connect your high school, college, or university lab with our open publication network.</p>
       </div>
       <div class="shelf-dark-buttons">
-        <a href="#partners" class="btn btn-orange">Explore All College Partners</a>
+        <a href="/institutes/" class="btn btn-orange">Explore All College Partners</a>
         <a href="#contact" class="btn btn-dark">Join as A Partner</a>
       </div>
     </div>
@@ -254,6 +255,33 @@ function normalizeSitePathOrUrl(val) {
   return `/${s.replace(/^\.?\//, '')}`;
 }
 
+function resolveImageSrc(val, defaultDir = IMAGE_DIRS.leaders) {
+  const raw = cleanStringField(val).replace(/\\/g, '/');
+  if (!raw) return '';
+  if (/^https?:\/\/\S+$/i.test(raw)) return raw;
+  if (raw.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(raw)) return '';
+
+  const fixedRaw = raw.replace(/\/leaders\/ing\//gi, '/leaders/img/');
+  const trimmed = fixedRaw.replace(/^\.?\/+/, '');
+  if (!trimmed) return '';
+
+  const normDir = defaultDir
+    ? `/${defaultDir.replace(/^\/+|\/+$/g, '')}/`
+    : '/';
+
+  // Filename only (e.g. "Arik.webp") -> prepend defaultDir ("/leaders/img/Arik.webp")
+  if (!trimmed.includes('/')) {
+    return `${normDir}${trimmed}`;
+  }
+
+  // Relative "img/filename.ext" -> "<defaultDir>filename.ext"
+  if (/^img\/[^/]+$/i.test(trimmed) && defaultDir) {
+    return `${normDir}${trimmed.slice(4)}`;
+  }
+
+  return `/${trimmed}`;
+}
+
 function normalizeExternalUrl(val) {
   const s = cleanStringField(val);
   if (!s) return '';
@@ -279,11 +307,10 @@ function resolveLeaderName(row) {
 }
 
 function resolveLeaderPhoto(row) {
-  const directPhoto = normalizeSitePathOrUrl(row.profile_i);
+  const directPhoto = resolveImageSrc(row.profile_i, IMAGE_DIRS.leaders);
   if (directPhoto) return directPhoto;
   const prof = extractEmbeddedProfile(row.profiles);
-  const fallbackPhoto = prof ? normalizeSitePathOrUrl(prof.photo) : '';
-  return fallbackPhoto;
+  return prof ? resolveImageSrc(prof.photo, IMAGE_DIRS.leaders) : '';
 }
 
 function resolveLeaderProfileHref(pLink, cid, isFounder) {
@@ -309,7 +336,7 @@ function buildPhotoFallbackCandidates(initialSrc) {
   }
 
   const dirFixed = initialSrc.replace('/leaders/ing/', '/leaders/img/');
-  const match = dirFixed.match(/^(\/leaders\/img\/)([^/?#]+)(\.(?:jpe?g|png|webp))$/i);
+  const match = dirFixed.match(/^(\/(?:leaders|students|teachers|institutes)\/img\/)([^/?#]+)(\.(?:jpe?g|png|webp))$/i);
   if (match) {
     const [, prefix, baseName, ext] = match;
     const toggledBase =
@@ -322,6 +349,9 @@ function buildPhotoFallbackCandidates(initialSrc) {
       for (const e of exts) {
         pushUnique(`${prefix}${b}${e}`);
       }
+    }
+    for (const altDir of [IMAGE_DIRS.students, IMAGE_DIRS.teachers, IMAGE_DIRS.institutes]) {
+      pushUnique(`${altDir}${baseName}${ext}`);
     }
   }
 
@@ -499,8 +529,8 @@ function renderLeaderCardsDOM(gridSlot, items, isSampleFallback) {
           class="leader-photo-img"
           src="${esc(photoUrl)}"
           alt="Portrait of ${esc(name)}"
-          width="102"
-          height="102"
+          width="117"
+          height="117"
           loading="lazy"
           decoding="async"
           referrerpolicy="no-referrer"
@@ -549,8 +579,8 @@ function renderSampleLeadersFallback(founderSlot, gridSlot) {
       role: f.title,
       bio: f.bio,
       responsibilities: f.responsibilities || [],
-      photo: f.photo || '',
-      photo480: f.photo480 || ''
+      photo: resolveImageSrc(f.photo, IMAGE_DIRS.leaders),
+      photo480: f.photo480 ? resolveImageSrc(f.photo480, IMAGE_DIRS.leaders) : ''
     }, Boolean(f.photo480));
   }
 
@@ -561,7 +591,7 @@ function renderSampleLeadersFallback(founderSlot, gridSlot) {
       name: l.name,
       role: l.position,
       quote: l.responsibility,
-      photo: l.photo || ''
+      photo: resolveImageSrc(l.photo, IMAGE_DIRS.leaders)
     }));
     renderLeaderCardsDOM(gridSlot, sampleItems, true);
   }
@@ -674,7 +704,7 @@ function renderTeachers() {
         <p class="shelf-dark-desc">Connect with verified academic evaluators, subject specialists, and educators across the network.</p>
       </div>
       <div class="shelf-dark-buttons">
-        <a href="#teachers" class="btn btn-orange">Explore All Teaches</a>
+        <a href="/teachers/" class="btn btn-orange">Explore All Teachers</a>
         <a href="login.html?role=teacher" class="btn btn-dark">Join as a Teacher</a>
       </div>
     </div>
@@ -724,7 +754,7 @@ function renderStudents() {
         <p class="shelf-dark-desc">Discover student authors, project creators, and research collaborators from secondary to university levels.</p>
       </div>
       <div class="shelf-dark-buttons">
-        <a href="#students" class="btn btn-orange">Watch all Students profile</a>
+        <a href="/students/" class="btn btn-orange">Watch all Students profile</a>
         <a href="login.html?role=student" class="btn btn-dark">Join as a Student</a>
       </div>
     </div>
@@ -769,7 +799,10 @@ function renderEvents(type = 'upcoming') {
         <h3 class="shelf-dark-title">Explore All Events</h3>
         <p class="shelf-dark-desc">Participate in monthly research presentations, code walkthroughs, and peer review roundtables.</p>
       </div>
-      <a href="#contact" class="btn btn-orange" style="margin-top:20px; width:fit-content;">Calendar & Archive</a>
+      <div class="shelf-dark-buttons">
+        <a href="/communities/" class="btn btn-orange">Explore Communities</a>
+        <a href="#contact" class="btn btn-dark">Calendar & Archive</a>
+      </div>
     </div>
   `;
 

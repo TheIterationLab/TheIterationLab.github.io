@@ -1260,11 +1260,11 @@ img {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-/* 1.5x larger leader photos (~102px) keeping same 14px corner radius & layout */
+/* 15% larger non-founder leader photos (117px) keeping same 14px corner radius & layout */
 .leader-item-card .leader-avatar {
-  width: 102px;
-  height: 102px;
-  font-size: 26px;
+  width: 117px;
+  height: 117px;
+  font-size: 30px;
 }
 
 .leader-avatar img {

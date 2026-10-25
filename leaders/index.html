@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leader Profile · The Iteration Lab</title>
-  <meta name="description" content="Leadership profile at The Iteration Lab open educational research and publication platform.">
+  <title>Leaders Directory · The Iteration Lab</title>
+  <meta name="description" content="Meet the governance, stewardship, and coordination leaders of The Iteration Lab open educational research platform.">
   <link rel="icon" type="image/png" href="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/assets/css/directory.css">
 </head>
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -62,6 +63,7 @@
   </button>
 
   <div class="mobile-nav-drawer" id="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Mobile Navigation">
+    <a href="/">← Home Page</a>
     <a href="/#mission">Mission</a>
     <a href="/#research">Research & Publications</a>
     <a href="/#software">Software Builds</a>
@@ -75,11 +77,41 @@
     <a href="/login.html" style="color:var(--brand-orange);">Join us & Sign In →</a>
   </div>
 
-  <main id="main-content" style="flex:1; display:flex; align-items:center; justify-content:center; padding:80px 0;">
-    <div class="container" style="text-align:center; max-width:560px;">
-      <h1 class="section-title" style="margin-bottom:12px;">Profile coming soon</h1>
-      <p class="section-subtitle" style="margin-bottom:28px;">Detailed leadership profiles and publication histories are currently being prepared for this directory.</p>
-      <a href="/" class="btn btn-orange">← Back to homepage</a>
+  <main id="main-content" class="dir-main">
+    <div class="container" id="dir-root" data-directory="leaders">
+      <div id="dir-scroll-anchor"></div>
+
+      <div class="dir-home-bar dir-home-bar-top">
+        <a href="/" class="dir-home-link">
+          <span class="dir-home-link-arrow" aria-hidden="true">←</span>
+          <span>Return to Home Page</span>
+        </a>
+      </div>
+
+      <header class="dir-header" id="dir-page-header">
+        <div class="dir-eyebrow">
+          <span class="dir-eyebrow-pip" aria-hidden="true"></span>
+          <span>Governance & Stewardship</span>
+        </div>
+        <h1 class="dir-title">Leadership Directory</h1>
+        <p class="dir-subtitle">Core stewards guiding architectural systems, peer-review standards, member verification, and institutional collaboration.</p>
+      </header>
+
+      <div class="dir-summary-bar" id="dir-summary" hidden></div>
+      <nav class="dir-pagination dir-pagination-top" id="dir-pagination-top" aria-label="Pagination top" hidden></nav>
+
+      <div id="dir-list-slot"></div>
+
+      <nav class="dir-pagination dir-pagination-bottom" id="dir-pagination-bottom" aria-label="Pagination bottom" hidden></nav>
+
+      <div class="dir-detail-wrap" id="dir-detail-slot" hidden></div>
+
+      <div class="dir-home-bar dir-home-bar-bottom">
+        <a href="/" class="dir-home-link">
+          <span class="dir-home-link-arrow" aria-hidden="true">←</span>
+          <span>Return to Home Page</span>
+        </a>
+      </div>
     </div>
   </main>
 
@@ -97,12 +129,14 @@
         <div>
           <div class="footer-heading">Directories</div>
           <div class="footer-links-list">
-            <a href="/#research" class="footer-link-item">Research & Journals</a>
-            <a href="/#software" class="footer-link-item">Software Builds</a>
-            <a href="/#teachers" class="footer-link-item">Teachers Database</a>
-            <a href="/#students" class="footer-link-item">Students Database</a>
-            <a href="/#partners" class="footer-link-item">College Partners</a>
-            <a href="/#events" class="footer-link-item">Events Calendar</a>
+            <a href="/" class="footer-link-item">Home Page</a>
+            <a href="/researches/" class="footer-link-item">Research & Journals</a>
+            <a href="/softwares/" class="footer-link-item">Software Builds</a>
+            <a href="/teachers/" class="footer-link-item">Teachers Database</a>
+            <a href="/students/" class="footer-link-item">Students Database</a>
+            <a href="/institutes/" class="footer-link-item">College Partners</a>
+            <a href="/communities/" class="footer-link-item">Communities</a>
+            <a href="/leaders/" class="footer-link-item">Leaders Directory</a>
           </div>
         </div>
 
@@ -149,5 +183,6 @@
   </div>
 
   <script type="module" src="/js/main.js"></script>
+  <script type="module" src="/assets/js/directory.js"></script>
 </body>
 </html>

@@ -222,7 +222,7 @@ export const TOP_LEADERS = {
     cid: "founder",
     name: "Ikramul Hoque",
     title: "FOUNDER & Chief-DEVELOPER",
-    photo: "/leaders/img/Arik.webp",
+    photo: "Arik.webp",
     photo480: "",
     p_link: "/profile/S/ikramulhoquearik",
     portfolioUrl: "https://ikramulhoque-arik.github.io",

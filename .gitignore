@@ -1,0 +1,18 @@
+# Dependencies & build output
+node_modules/
+dist/
+
+# Environment variables & local secrets
+.env
+.env.*
+!.env.example
+
+# Internal documentation (never upload to GitHub)
+/The_Iteration_Lab_Database_Guide.md
+The_Iteration_Lab_Database_Guide*.md
+public/assets/aistudio/The_Iteration_Lab_Database_Guide*
+
+# Editor & tool directories
+.aistudio/
+.DS_Store
+*.log
