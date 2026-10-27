@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Member Portfolio · The Iteration Lab</title>
+  <meta name="description" content="Academic research portfolio, software builds, credentials, and publications on The Iteration Lab open educational research network.">
+  <link rel="icon" type="image/png" href="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/assets/css/profile.css">
+</head>
+<body class="profile-body">
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- 1. TOP HEADER BAR (Matches Sketch: Brand Left | Eye (Edit), Home, Menu Right) -->
+  <header class="prof-header" role="banner">
+    <div class="container prof-header-inner">
+      <a href="/" class="prof-brand" aria-label="The Iteration Lab Home">
+        <span class="prof-brand-mark">
+          <img src="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="The Iteration Lab Emblem" width="28" height="28">
+        </span>
+        <span class="prof-brand-name">The Iteration Lab</span>
+      </a>
+
+      <div class="prof-header-controls">
+        <!-- Eye Toggle Button: Rendered ONLY when logged into this specific account -->
+        <button
+          type="button"
+          id="profile-eye-btn"
+          class="prof-eye-btn"
+          aria-pressed="false"
+          aria-label="Toggle between User View and Edit Mode"
+          title="Switch to Edit Mode"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span class="prof-eye-label" id="profile-eye-label">Edit</span>
+        </button>
+
+        <a href="/" class="prof-home-btn">Home</a>
+
+        <button
+          type="button"
+          id="profile-menu-btn"
+          class="prof-menu-btn"
+          aria-label="Open navigation menu"
+          aria-expanded="false"
+          aria-controls="prof-drawer"
+        >
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="4" y1="7" x2="20" y2="7"></line>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+            <line x1="4" y1="17" x2="20" y2="17"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Slide-over Navigation Drawer -->
+  <div class="prof-drawer-backdrop" id="prof-drawer-backdrop" aria-hidden="true"></div>
+  <aside class="prof-drawer" id="prof-drawer" role="dialog" aria-modal="true" aria-label="Portfolio Navigation">
+    <div class="prof-drawer-head">
+      <span class="prof-drawer-title">Portfolio Sections</span>
+      <button type="button" class="prof-drawer-close" id="prof-drawer-close" aria-label="Close menu">✕</button>
+    </div>
+
+    <div class="prof-drawer-group-label">On This Portfolio</div>
+    <nav class="prof-drawer-links" aria-label="Portfolio jump links">
+      <a href="#education-section" class="prof-drawer-link">01. Education</a>
+      <a href="#skills-section" class="prof-drawer-link">02. Skills, Badges &amp; Certifications</a>
+      <a href="#experiences-section" class="prof-drawer-link">03. Experiences</a>
+      <a href="#researches-section" class="prof-drawer-link">04. Researches &amp; Journals</a>
+      <a href="#softwares-section" class="prof-drawer-link">05. Softwares</a>
+      <a href="#cocurriculars-section" class="prof-drawer-link">06. Co-Curriculars</a>
+      <a href="#contact-section" class="prof-drawer-link">07. Contact</a>
+    </nav>
+
+    <div class="prof-drawer-group-label">The Iteration Lab</div>
+    <nav class="prof-drawer-links" aria-label="Platform directories">
+      <a href="/" class="prof-drawer-link">← Return to Home Page</a>
+      <a href="/researches/" class="prof-drawer-link">Research &amp; Journals Archive</a>
+      <a href="/softwares/" class="prof-drawer-link">Software Builds Registry</a>
+      <a href="/students/" class="prof-drawer-link">Students Directory</a>
+      <a href="/teachers/" class="prof-drawer-link">Teachers Directory</a>
+      <a href="/institutes/" class="prof-drawer-link">College Partners</a>
+      <a href="/communities/" class="prof-drawer-link">Communities</a>
+      <a href="/login.html" class="prof-drawer-link">Account &amp; Sign In</a>
+    </nav>
+  </aside>
+
+  <!-- Edit Mode Contextual Ribbon -->
+  <div class="prof-edit-ribbon" id="prof-edit-ribbon" hidden>
+    <div class="container prof-edit-ribbon-inner">
+      <div class="prof-edit-hint">
+        <span class="prof-edit-tag">EDIT MODE</span>
+        <span>Double-click any highlighted text, quote, bold heading, or GPA to edit. Leave blank to restore default; set UG/Graduate GPA to 0 to hide.</span>
+      </div>
+      <div class="prof-edit-actions">
+        <button type="button" class="prof-ribbon-btn" id="prof-reset-defaults-btn">Reset Sample Defaults</button>
+        <button type="button" class="prof-ribbon-btn prof-ribbon-btn-primary" id="prof-exit-edit-btn">Done · View as User</button>
+      </div>
+    </div>
+  </div>
+
+  <main id="main-content">
+    <!-- 2. HERO SPLIT SECTION -->
+    <section class="prof-hero" aria-labelledby="prof-hero-headline">
+      <div class="container prof-hero-grid">
+        <div class="prof-hero-copy">
+          <div
+            id="prof-role-kicker"
+            class="prof-role-kicker"
+            data-editable="roleKicker"
+            data-single-line="true"
+          >Student · Researcher</div>
+
+          <div class="prof-member-identity">
+            <span
+              id="prof-member-name"
+              class="prof-member-name"
+              data-editable="name"
+              data-single-line="true"
+            >Tanvir Hossain</span>
+            <span class="prof-identity-sep" aria-hidden="true">·</span>
+            <span
+              id="prof-member-inst"
+              class="prof-member-inst"
+              data-editable="institution"
+              data-single-line="true"
+            >Notre Dame College, Dhaka</span>
+          </div>
+
+          <h1
+            id="prof-hero-headline"
+            class="prof-hero-headline"
+            data-editable="headline"
+          >Turn Insight Into Discovery</h1>
+
+          <p
+            id="prof-hero-lead"
+            class="prof-hero-lead"
+            data-editable="lead"
+          >Investigating computational linguistics, open embedded telemetry, and reproducible student research workflows across secondary and collegiate cohorts in Bangladesh.</p>
+
+          <div class="prof-hero-actions">
+            <a href="#researches-section" id="prof-primary-cta" class="prof-cta-primary">
+              <span id="prof-primary-cta-text">Researches</span>
+              <span class="prof-cta-arrow-tile" aria-hidden="true">↗</span>
+            </a>
+
+            <a
+              href="https://wa.me/TheIterationLab"
+              id="prof-whatsapp-cta"
+              class="prof-cta-secondary"
+              target="_blank"
+              rel="noopener noreferrer"
+            >WhatsApp</a>
+
+            <button
+              type="button"
+              id="prof-cta-switch-btn"
+              class="prof-cta-edit-switch"
+              hidden
+            >Switch button to "Software"</button>
+          </div>
+        </div>
+
+        <!-- Portrait + Overlapping Orange Recent Researches Auto-Scrolling Card -->
+        <div class="prof-hero-visual">
+          <div class="prof-portrait-frame">
+            <button type="button" id="prof-photo-edit-btn" class="prof-photo-edit-btn" hidden>
+              Change Portrait
+            </button>
+            <input type="file" id="prof-photo-file-input" accept="image/*" hidden>
+
+            <img
+              id="prof-portrait-img"
+              class="prof-portrait-img"
+              src="/profile/img/student_portrait.jpg"
+              alt="Member portrait"
+              referrerpolicy="no-referrer"
+            >
+            <div id="prof-portrait-fallback" class="prof-portrait-fallback" hidden>
+              <span id="prof-portrait-initials" class="prof-portrait-initials">TH</span>
+            </div>
+          </div>
+
+          <aside class="prof-recent-card" id="prof-recent-card" aria-label="Recent Researches">
+            <div class="prof-recent-top">
+              <span class="prof-recent-kicker">Recent Researches</span>
+              <div class="prof-recent-nav">
+                <button type="button" id="prof-recent-prev" class="prof-recent-arrow" aria-label="Previous research">&lt;</button>
+                <button type="button" id="prof-recent-next" class="prof-recent-arrow" aria-label="Next research">&gt;</button>
+              </div>
+            </div>
+            <div class="prof-recent-slide" id="prof-recent-slide" aria-live="polite"></div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. OBSIDIAN ARCHITECTURAL BAND: QUOTE + DESCRIPTION + DYNAMIC GPA ROW -->
+    <section class="prof-obsidian-band" aria-label="Research Statement and Academic Standing">
+      <div class="container">
+        <div class="prof-statement-wrap">
+          <div
+            id="prof-statement-kicker"
+            class="prof-statement-kicker"
+            data-editable="statementKicker"
+            data-single-line="true"
+          >Research Philosophy</div>
+
+          <blockquote
+            id="prof-quote-text"
+            class="prof-quote-text"
+            data-editable="quote"
+          >“Rigorous inquiry begins the moment curiosity is paired with open methodology, transparent data, and peer verification.”</blockquote>
+
+          <p
+            id="prof-description-text"
+            class="prof-description-text"
+            data-editable="description"
+          >Committed to building open-source scientific instruments and publishing peer-reviewed student preprints through The Iteration Lab network—bridging classroom theory with field-tested engineering.</p>
+        </div>
+
+        <!-- Dynamic GPA & Publications Row (Hides 0 / empty GPAs in User Mode with zero blank gaps) -->
+        <div class="prof-metrics-row" id="prof-metrics-row" role="list" aria-label="Academic GPA and Research Metrics"></div>
+      </div>
+    </section>
+
+    <!-- 4. EDUCATION (CV Timeline) -->
+    <section class="prof-section" id="education-section" aria-labelledby="edu-heading">
+      <div class="container prof-cv-layout">
+        <div class="prof-cv-intro">
+          <div class="prof-section-index">01 · Academic Background</div>
+          <h2 class="prof-section-title" id="edu-heading">Education</h2>
+          <p class="prof-section-desc">Formal academic progression, concentrations, and board distinctions formatted as an open research curriculum vitae.</p>
+        </div>
+
+        <div>
+          <div class="prof-cv-list" id="edu-cv-list"></div>
+          <button type="button" id="education-add-btn" class="prof-cv-add-btn" hidden>+ Add Education Entry</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. SKILLS, BADGES & CERTIFICATIONS (Right-to-Left Scroll-Stacking Cards) -->
+    <section class="prof-stack-section prof-section-alt" id="skills-section" aria-labelledby="skills-heading">
+      <div class="prof-stack-runway">
+        <div class="prof-stack-sticky">
+          <div class="container">
+            <div class="prof-stack-head">
+              <div>
+                <div class="prof-section-index">02 · Verified Competencies</div>
+                <h2 class="prof-section-title" id="skills-heading">Skills, Badges &amp; Certifications</h2>
+              </div>
+              <div class="prof-stack-counter" id="skills-stack-counter">01 / 03</div>
+            </div>
+
+            <div class="prof-stack-stage" id="skills-stack-stage"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. EXPERIENCES (CV Timeline) -->
+    <section class="prof-section" id="experiences-section" aria-labelledby="exp-heading">
+      <div class="container prof-cv-layout">
+        <div class="prof-cv-intro">
+          <div class="prof-section-index">03 · Research &amp; Lab Track</div>
+          <h2 class="prof-section-title" id="exp-heading">Experiences</h2>
+          <p class="prof-section-desc">Laboratory appointments, working-group stewardship, field campaigns, and collaborative mentoring roles.</p>
+        </div>
+
+        <div>
+          <div class="prof-cv-list" id="exp-cv-list"></div>
+          <button type="button" id="experiences-add-btn" class="prof-cv-add-btn" hidden>+ Add Experience Entry</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. RESEARCHES & JOURNALS (Right-to-Left Scroll-Stacking Cards) -->
+    <section class="prof-stack-section prof-section-alt" id="researches-section" aria-labelledby="researches-heading">
+      <div class="prof-stack-runway">
+        <div class="prof-stack-sticky">
+          <div class="container">
+            <div class="prof-stack-head">
+              <div>
+                <div class="prof-section-index">04 · Open Scholarship</div>
+                <h2 class="prof-section-title" id="researches-heading">Researches &amp; Journals</h2>
+              </div>
+              <div class="prof-stack-counter" id="researches-stack-counter">01 / 03</div>
+            </div>
+
+            <div class="prof-stack-stage" id="researches-stack-stage"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. SOFTWARES (Right-to-Left Scroll-Stacking Cards) -->
+    <section class="prof-stack-section" id="softwares-section" aria-labelledby="softwares-heading">
+      <div class="prof-stack-runway">
+        <div class="prof-stack-sticky">
+          <div class="container">
+            <div class="prof-stack-head">
+              <div>
+                <div class="prof-section-index">05 · Engineering &amp; Code</div>
+                <h2 class="prof-section-title" id="softwares-heading">Softwares</h2>
+              </div>
+              <div class="prof-stack-counter" id="softwares-stack-counter">01 / 03</div>
+            </div>
+
+            <div class="prof-stack-stage" id="softwares-stack-stage"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. CO-CURRICULARS (Right-to-Left Scroll-Stacking Cards) -->
+    <section class="prof-stack-section prof-section-alt" id="cocurriculars-section" aria-labelledby="cocurriculars-heading">
+      <div class="prof-stack-runway">
+        <div class="prof-stack-sticky">
+          <div class="container">
+            <div class="prof-stack-head">
+              <div>
+                <div class="prof-section-index">06 · Community &amp; Leadership</div>
+                <h2 class="prof-section-title" id="cocurriculars-heading">Co-Curriculars</h2>
+              </div>
+              <div class="prof-stack-counter" id="cocurriculars-stack-counter">01 / 03</div>
+            </div>
+
+            <div class="prof-stack-stage" id="cocurriculars-stack-stage"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. CONTACT SECTION -->
+    <section class="prof-section" id="contact-section" aria-labelledby="contact-heading">
+      <div class="container prof-contact-grid">
+        <div>
+          <div class="prof-section-index">07 · Academic Correspondence</div>
+          <h2 class="prof-section-title" id="contact-heading">Contact</h2>
+          <p class="prof-section-desc" style="margin-bottom:24px;">
+            Reach out regarding research replication, dataset requests, co-authorship, or peer-review coordination through The Iteration Lab.
+          </p>
+
+          <div class="prof-contact-card">
+            <div class="prof-contact-row">
+              <div class="prof-contact-label">Academic &amp; Lab Email</div>
+              <div
+                id="prof-contact-email"
+                class="prof-contact-val"
+                data-editable="email"
+                data-single-line="true"
+              >tanvir.research@iterationlab.org</div>
+            </div>
+
+            <div class="prof-contact-row">
+              <div class="prof-contact-label">Direct WhatsApp Desk</div>
+              <div class="prof-contact-val">
+                <a
+                  id="prof-contact-wa"
+                  href="https://wa.me/TheIterationLab"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style="color:var(--prof-orange);"
+                >wa.me/TheIterationLab</a>
+              </div>
+            </div>
+
+            <div class="prof-contact-row">
+              <div class="prof-contact-label">Location &amp; Network</div>
+              <div
+                id="prof-contact-location"
+                class="prof-contact-val"
+                data-editable="location"
+                data-single-line="true"
+              >Motijheel, Dhaka, Bangladesh</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="prof-contact-form-box">
+          <form id="prof-contact-form" class="contact-form" novalidate>
+            <div class="input-group">
+              <label for="prof-sender-name" class="input-label">Your Name</label>
+              <input type="text" id="prof-sender-name" class="input-field" required placeholder="e.g. Dr. Rafiqul Islam">
+            </div>
+
+            <div class="input-group">
+              <label for="prof-sender-email" class="input-label">Institutional or Personal Email</label>
+              <input type="email" id="prof-sender-email" class="input-field" required placeholder="name@institution.edu.bd">
+            </div>
+
+            <div class="input-group">
+              <label for="prof-sender-msg" class="input-label">Research or Collaboration Message</label>
+              <textarea id="prof-sender-msg" class="input-field" rows="4" required placeholder="Outline your question regarding papers, software repositories, or collaboration..."></textarea>
+            </div>
+
+            <div id="prof-contact-feedback" class="form-feedback" style="display:none;" role="alert"></div>
+
+            <button type="submit" class="btn btn-orange" style="width:100%;">Send Academic Inquiry</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 11. FOOTER OF THE ITERATION LAB -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <img src="/public/assets/aistudio/iteration-lab-logo-jetspiral_de0a9952.png" alt="The Iteration Lab — Design · Simulate · Machine" class="footer-logo-tile" width="220" height="110" loading="lazy">
+          <p class="footer-mission">
+            An open educational research network and publication platform dedicated to fostering student inquiry, peer-reviewed projects, and open software builds from concept to societal impact.
+          </p>
+        </div>
+
+        <div>
+          <div class="footer-heading">Directories</div>
+          <div class="footer-links-list">
+            <a href="/" class="footer-link-item">Home Page</a>
+            <a href="/researches/" class="footer-link-item">Research &amp; Journals</a>
+            <a href="/softwares/" class="footer-link-item">Software Builds</a>
+            <a href="/teachers/" class="footer-link-item">Teachers Database</a>
+            <a href="/students/" class="footer-link-item">Students Database</a>
+            <a href="/institutes/" class="footer-link-item">College Partners</a>
+            <a href="/communities/" class="footer-link-item">Communities</a>
+            <a href="/leaders/" class="footer-link-item">Leaders Directory</a>
+          </div>
+        </div>
+
+        <div>
+          <div class="footer-heading">Governance</div>
+          <div class="footer-links-list">
+            <a href="/#mission" class="footer-link-item">Our Mission</a>
+            <a href="/#leaders" class="footer-link-item">Top Leaders</a>
+            <a href="/#policies" class="footer-link-item">Editorial Standards</a>
+            <a href="/#policies" class="footer-link-item">Research Integrity</a>
+            <a href="/#policies" class="footer-link-item">Student Safety &amp; Privacy</a>
+            <a href="/#policies" class="footer-link-item">Community Guidelines</a>
+          </div>
+        </div>
+
+        <div>
+          <div class="footer-heading">Access &amp; Support</div>
+          <div class="footer-links-list">
+            <a href="/login.html" class="footer-link-item" style="color:var(--brand-orange); font-weight:600;">Join us &amp; Publish</a>
+            <a href="/#contact" class="footer-link-item">Contact Coordination Desk</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bot-bar">
+        <div>© 2026 The Iteration Lab. Open Educational Research Network. All rights reserved.</div>
+        <div style="font-family:var(--font-mono); font-size:11px; color:#6B7280;">Philosophy: "From Idea to Impact"</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Item Detail Reader Modal -->
+  <div class="modal-backdrop" id="prof-reader-modal" role="dialog" aria-modal="true" aria-labelledby="prof-reader-title">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3 id="prof-reader-title" style="font-family:var(--font-serif); font-size:19px; font-weight:600;">Publication Brief</h3>
+        <button type="button" id="prof-reader-close" style="font-size:20px; color:#6B7280; padding:4px;" aria-label="Close modal">✕</button>
+      </div>
+      <div class="modal-body" id="prof-reader-body"></div>
+    </div>
+  </div>
+
+  <!-- Sample Mode Tester Dock (Switch Student / Teacher / Publisher + Logged-in Owner vs Visitor) -->
+  <aside class="prof-demo-dock" id="prof-demo-dock" aria-label="Sample Portfolio Switcher">
+    <span class="prof-demo-label">SAMPLE VIEW:</span>
+    <select id="prof-demo-role-select" class="prof-demo-select" aria-label="Select sample member role">
+      <option value="student">Student (UG/Grad = 0 hidden)</option>
+      <option value="founder">Founder · Ikramul Hoque</option>
+      <option value="teacher">Teacher (All GPAs shown)</option>
+      <option value="publisher">Independent Publisher</option>
+    </select>
+    <button type="button" id="prof-demo-auth-btn" class="prof-demo-auth-btn is-owner">Session: Owner (Eye Visible)</button>
+    <button type="button" id="prof-demo-close" class="prof-demo-close" aria-label="Hide sample toolbar" title="Hide toolbar">✕</button>
+  </aside>
+
+  <script type="module" src="/assets/js/profile.js"></script>
+</body>
+</html>

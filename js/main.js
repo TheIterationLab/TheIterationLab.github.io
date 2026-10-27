@@ -1200,6 +1200,9 @@ function initDetailModal() {
             <div style="font-size:12px; color:#10B981; font-weight:600; margin-top:8px;">
               ✓ Verified in The Iteration Lab Academic Directory
             </div>
+            <div style="margin-top:8px;">
+              <a href="/profile/?type=${type === 'teacher' ? 'T' : 'S'}" class="btn btn-orange" style="width:fit-content;">Open Full Portfolio →</a>
+            </div>
           </div>
         `);
       }
