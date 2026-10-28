@@ -4,7 +4,15 @@
 // /softwares/, and /communities/ (both paginated list & ?id= detail views).
 // ==========================================================================
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY, IMAGE_DIRS } from '../../js/config.js';
+import {
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  FOUNDER_LEADER_CID,
+  FOUNDER_LEADER_DETAIL_URL,
+  FOUNDER_PROFILE_URL,
+  LEADER_APPLICATION_WHATSAPP_URL,
+  IMAGE_DIRS
+} from '../../js/config.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -23,8 +31,8 @@ const DIRECTORY_CONFIGS = {
     table: 'leaders',
     idColumn: 'cid',
     idIsUuid: true,
-    listSelect: 'cid,sort_order,display_name,role,quote,bio,responsibilities,profile_i,whatsapp,profiles(name,photo)',
-    detailSelect: 'cid,sort_order,display_name,role,quote,bio,responsibilities,profile_i,whatsapp,s_invite_count,c_invite_count,t_invite_count,r_published,s_published,skill_score,profiles(name,photo)',
+    listSelect: 'cid,sort_order,display_name,role,quote,bio,responsibilities,profile_i,p_link,whatsapp,profiles(name,photo)',
+    detailSelect: 'cid,sort_order,display_name,role,quote,bio,responsibilities,profile_i,p_link,whatsapp,s_invite_count,c_invite_count,t_invite_count,r_published,s_published,skill_score,profiles(name,photo)',
     order: 'sort_order.asc',
     singularLabel: 'leader',
     pluralLabel: 'leaders',
@@ -725,6 +733,15 @@ function renderErrorState(container, messageText, onRetry) {
   container.appendChild(box);
 }
 
+function resolveMemberPortfolioHref(cid, customLink = '') {
+  const explicit = cleanText(customLink);
+  if (explicit) return explicit;
+  const cleanCid = cleanText(cid);
+  if (!cleanCid) return '';
+  if (cleanCid === FOUNDER_LEADER_CID) return FOUNDER_PROFILE_URL;
+  return `/profile/?cid=${encodeURIComponent(cleanCid)}`;
+}
+
 /* ==========================================================================
    List Card Renderers for All 7 Directories
    ========================================================================== */
@@ -743,9 +760,21 @@ function renderLeadersList(container, rows) {
     const photoSrc = resolveImageSrc(rawPhoto, IMAGE_DIRS.leaders);
     const whatsappHref = formatWhatsappHref(row.whatsapp);
     const cid = cleanText(row.cid);
+    const isFounder = cid === FOUNDER_LEADER_CID;
+    const leaderDetailHref = isFounder
+      ? FOUNDER_LEADER_DETAIL_URL
+      : cid
+        ? `/leaders/?id=${encodeURIComponent(cid)}`
+        : '';
+    const portfolioHref = resolveMemberPortfolioHref(cid, row.p_link);
 
-    const card = el('article', 'dir-leader-card');
+    const card = el('article', `dir-leader-card${leaderDetailHref ? ' dir-leader-card--clickable' : ''}`);
     card.setAttribute('aria-label', role ? `${name}, ${role}` : name);
+    if (leaderDetailHref) {
+      card.setAttribute('role', 'link');
+      card.setAttribute('tabindex', '0');
+      card.dataset.dirCardHref = leaderDetailHref;
+    }
 
     // Top/Left Photo Slot (photo or centered 2-letter initials circle)
     const media = el('div', 'dir-leader-media');
@@ -804,10 +833,9 @@ function renderLeadersList(container, rows) {
       waLink.rel = 'noopener noreferrer';
       actions.appendChild(waLink);
     }
-    if (cid) {
+    if (portfolioHref) {
       const profLink = el('a', 'dir-btn dir-btn-primary', 'Profile');
-      profLink.href = `/leaders/?id=${encodeURIComponent(cid)}`;
-      profLink.dataset.dirNav = 'true';
+      profLink.href = portfolioHref;
       actions.appendChild(profLink);
     }
     body.appendChild(actions);
@@ -828,6 +856,7 @@ function renderMembersCompactList(container, rows, institutesMap, cfg, defaultLa
     const photo = prof ? cleanText(prof.photo) : '';
     const instText = resolveInstitutionText(row.eiin, institutesMap);
     const cid = cleanText(row.cid);
+    const portfolioHref = resolveMemberPortfolioHref(cid);
 
     const card = el('article', 'dir-compact-card');
     const top = el('div', 'dir-compact-top');
@@ -841,10 +870,9 @@ function renderMembersCompactList(container, rows, institutesMap, cfg, defaultLa
     top.appendChild(info);
     card.appendChild(top);
 
-    if (cid) {
+    if (portfolioHref) {
       const btn = el('a', 'dir-btn dir-btn-outline', 'View profile');
-      btn.href = `${cfg.basePath}?id=${encodeURIComponent(cid)}`;
-      btn.dataset.dirNav = 'true';
+      btn.href = portfolioHref;
       card.appendChild(btn);
     }
 
@@ -1230,7 +1258,14 @@ function createPeoplePillsSection(headingText, ids, profilesMap) {
   const wrap = el('div', 'dir-people-list');
   ids.forEach(id => {
     const p = resolvePerson(profilesMap, id);
-    const pill = el('div', 'dir-person-pill');
+    const cleanId = cleanText(id);
+    const portfolioHref = UUID_RE.test(cleanId) ? resolveMemberPortfolioHref(cleanId) : '';
+    const pill = portfolioHref
+      ? el('a', 'dir-person-pill dir-person-pill--link')
+      : el('div', 'dir-person-pill');
+    if (portfolioHref) {
+      pill.href = portfolioHref;
+    }
     pill.appendChild(createAvatar(p.name, p.photo, 'dir-avatar-sm'));
     pill.appendChild(el('span', '', p.name));
     wrap.appendChild(pill);
@@ -1349,14 +1384,28 @@ function renderLeaderDetail(container, row, cfg) {
     qEl.style.fontStyle = 'italic';
     headCol.appendChild(qEl);
   }
-  if (whatsappHref) {
+  const cid = cleanText(row.cid);
+  const customProfileUrl = resolveMemberPortfolioHref(cid, row.p_link);
+
+  if (customProfileUrl || whatsappHref) {
     const actions = el('div', 'dir-actions-row');
     actions.style.marginTop = '14px';
-    const waBtn = el('a', 'dir-btn dir-btn-primary', 'WhatsApp');
-    waBtn.href = whatsappHref;
-    waBtn.target = '_blank';
-    waBtn.rel = 'noopener noreferrer';
-    actions.appendChild(waBtn);
+    if (customProfileUrl) {
+      const profBtn = el('a', 'dir-btn dir-btn-primary', 'Profile');
+      profBtn.href = customProfileUrl;
+      actions.appendChild(profBtn);
+    }
+    if (whatsappHref) {
+      const waBtn = el(
+        'a',
+        customProfileUrl ? 'dir-btn dir-btn-outline' : 'dir-btn dir-btn-primary',
+        'WhatsApp'
+      );
+      waBtn.href = whatsappHref;
+      waBtn.target = '_blank';
+      waBtn.rel = 'noopener noreferrer';
+      actions.appendChild(waBtn);
+    }
     headCol.appendChild(actions);
   }
 
@@ -1433,8 +1482,20 @@ function renderProfileEntityDetail(container, row, cfg, institutionText) {
       eiinEl.style.marginTop = '8px';
       info.appendChild(eiinEl);
     }
-  } else if (institutionText) {
-    info.appendChild(el('p', 'dir-subtitle', institutionText));
+  } else {
+    if (institutionText) {
+      info.appendChild(el('p', 'dir-subtitle', institutionText));
+    }
+    const memberCid = cleanText(row.cid);
+    const portfolioHref = resolveMemberPortfolioHref(memberCid);
+    if (portfolioHref) {
+      const actions = el('div', 'dir-actions-row');
+      actions.style.marginTop = '14px';
+      const profBtn = el('a', 'dir-btn dir-btn-primary', 'Open Portfolio ↗');
+      profBtn.href = portfolioHref;
+      actions.appendChild(profBtn);
+      info.appendChild(actions);
+    }
   }
 
   hero.appendChild(info);
@@ -1681,6 +1742,7 @@ function initDirectoryPage() {
   if (!cfg) return;
 
   const pageHeader = document.getElementById('dir-page-header');
+  const leadersNotice = document.getElementById('leaders-open-notice');
   const searchForm = document.getElementById('dir-search-form');
   const searchBySelect = document.getElementById('dir-search-by');
   const searchInput = document.getElementById('dir-search-input');
@@ -1691,6 +1753,12 @@ function initDirectoryPage() {
   const listSlot = document.getElementById('dir-list-slot');
   const detailSlot = document.getElementById('dir-detail-slot');
   const scrollTarget = document.getElementById('dir-scroll-anchor') || root;
+
+  if (LEADER_APPLICATION_WHATSAPP_URL) {
+    root.querySelectorAll('[data-leader-apply-link]').forEach((linkEl) => {
+      linkEl.setAttribute('href', LEADER_APPLICATION_WHATSAPP_URL);
+    });
+  }
 
   let activeRequestId = 0;
 
@@ -1796,12 +1864,46 @@ function initDirectoryPage() {
 
   root.addEventListener('click', (e) => {
     const link = e.target.closest('a[data-dir-nav="true"]');
-    if (!link) return;
+    if (link) {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      const url = new URL(link.href, window.location.origin);
+      if (url.pathname === window.location.pathname) {
+        e.preventDefault();
+        navigateUrl(url.pathname + url.search, true);
+      }
+      return;
+    }
+
+    if (e.target.closest('a, button')) return;
+    const clickableCard = e.target.closest('[data-dir-card-href]');
+    if (!clickableCard) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-    const url = new URL(link.href, window.location.origin);
+    const sel = window.getSelection ? window.getSelection() : null;
+    if (sel && String(sel).trim().length > 0) return;
+    const targetHref = clickableCard.dataset.dirCardHref || '';
+    if (!targetHref) return;
+    const url = new URL(targetHref, window.location.origin);
     if (url.pathname === window.location.pathname) {
       e.preventDefault();
       navigateUrl(url.pathname + url.search, true);
+    } else {
+      window.location.href = targetHref;
+    }
+  });
+
+  root.addEventListener('keydown', (e) => {
+    const clickableCard = e.target.closest('[data-dir-card-href]');
+    if (!clickableCard || e.target !== clickableCard) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const targetHref = clickableCard.dataset.dirCardHref || '';
+      if (!targetHref) return;
+      const url = new URL(targetHref, window.location.origin);
+      if (url.pathname === window.location.pathname) {
+        navigateUrl(url.pathname + url.search, true);
+      } else {
+        window.location.href = targetHref;
+      }
     }
   });
 
@@ -1817,6 +1919,10 @@ function initDirectoryPage() {
     pagBottom.hidden = true;
     listSlot.hidden = true;
     detailSlot.hidden = false;
+    if (leadersNotice && detailSlot) {
+      detailSlot.insertAdjacentElement('afterend', leadersNotice);
+      leadersNotice.style.marginTop = '24px';
+    }
 
     renderLoadingSkeleton(detailSlot, cfg);
 
@@ -1891,6 +1997,10 @@ function initDirectoryPage() {
 
   async function loadListView(requestedPage, searchByParam, searchQueryParam, reqId) {
     if (pageHeader) pageHeader.hidden = false;
+    if (leadersNotice && pageHeader) {
+      pageHeader.insertAdjacentElement('afterend', leadersNotice);
+      leadersNotice.style.marginTop = '';
+    }
     if (searchForm) searchForm.hidden = false;
     detailSlot.hidden = true;
     detailSlot.replaceChildren();

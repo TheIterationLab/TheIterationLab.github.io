@@ -621,6 +621,7 @@
       </div>
 
       <div class="status-actions">
+        <a id="open-portfolio-btn" href="/profile/" class="btn btn-orange" style="width:100%;" hidden>Open &amp; Edit My Portfolio →</a>
         <button type="button" id="logout-btn" class="btn btn-secondary" style="width:100%;">Log out</button>
       </div>
     </section>
@@ -757,6 +758,7 @@
       var statusType = document.getElementById('status-type');
       var statusVerifiedBadge = document.getElementById('status-verified-badge');
       var statusVerifiedText = document.getElementById('status-verified-text');
+      var openPortfolioBtn = document.getElementById('open-portfolio-btn');
       var logoutBtn = document.getElementById('logout-btn');
 
       if (forgotWhatsappLink) {
@@ -1236,13 +1238,17 @@
         authHeading.textContent = 'Account Status';
         authSubtitle.textContent = 'Your Iteration Lab membership and verification details.';
 
+        if (openPortfolioBtn) {
+          openPortfolioBtn.hidden = true;
+        }
+
         try {
           var client = ensureSupabaseClient();
           var uid = user.id;
 
           var results = await Promise.all([
             client.from('credentials').select('type, verified').eq('cid', uid).maybeSingle(),
-            client.from('profiles').select('name').eq('cid', uid).maybeSingle()
+            client.from('profiles').select('name, slug').eq('cid', uid).maybeSingle()
           ]);
 
           var credRes = results[0];
@@ -1270,6 +1276,23 @@
           var typeInfo = TYPE_CONFIG[cred.type];
           statusName.textContent = prof.name;
           statusType.textContent = typeInfo ? typeInfo.display : cred.type;
+
+          if (openPortfolioBtn) {
+            if (cred.type === 'I') {
+              openPortfolioBtn.href = '/institutes/?id=' + encodeURIComponent(uid);
+              openPortfolioBtn.textContent = 'View Institute Directory Page →';
+            } else if (uid === 'a370517e-ec1a-4257-9677-9293f6bd8d6b') {
+              openPortfolioBtn.href = '/profile/S/ikramulhoquearik';
+              openPortfolioBtn.textContent = 'Open & Edit My Portfolio →';
+            } else if (prof.slug) {
+              openPortfolioBtn.href = '/profile/?slug=' + encodeURIComponent(prof.slug);
+              openPortfolioBtn.textContent = 'Open & Edit My Portfolio →';
+            } else {
+              openPortfolioBtn.href = '/profile/?cid=' + encodeURIComponent(uid);
+              openPortfolioBtn.textContent = 'Open & Edit My Portfolio →';
+            }
+            openPortfolioBtn.hidden = false;
+          }
 
           var isVerified = Number(cred.verified) === 1 || cred.verified === true;
           if (isVerified) {

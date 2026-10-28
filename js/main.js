@@ -11,14 +11,22 @@ import {
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
+  FOUNDER_LEADER_DETAIL_URL,
   FOUNDER_PORTFOLIO_URL,
   FOUNDER_PROFILE_URL,
   WHATSAPP_URL,
   WHATSAPP_NUMBER,
+  LEADER_APPLICATION_WHATSAPP_URL,
   IMAGE_DIRS
 } from './config.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (LEADER_APPLICATION_WHATSAPP_URL) {
+    document.querySelectorAll('[data-leader-apply-link]').forEach((el) => {
+      el.setAttribute('href', LEADER_APPLICATION_WHATSAPP_URL);
+    });
+  }
+
   renderPublications();
   renderSoftware();
   renderPartners();
@@ -299,6 +307,15 @@ function resolveWhatsappHref() {
   return handle ? `https://wa.me/${handle}` : '';
 }
 
+function resolveMemberWhatsappHref(val) {
+  const raw = cleanStringField(val);
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^wa\.me\/\S+$/i.test(raw)) return `https://${raw}`;
+  const cleaned = raw.replace(/^[@+\s]+/, '').replace(/[\s()-]/g, '');
+  return cleaned ? `https://wa.me/${encodeURIComponent(cleaned)}` : '';
+}
+
 function resolveLeaderName(row) {
   const direct = cleanStringField(row.display_name);
   if (direct) return direct;
@@ -320,7 +337,7 @@ function resolveLeaderProfileHref(pLink, cid, isFounder) {
     const founderDefault = normalizeSitePathOrUrl(FOUNDER_PROFILE_URL);
     if (founderDefault) return founderDefault;
   }
-  return cid ? `/leaders/?id=${encodeURIComponent(cid)}` : '/leaders/';
+  return cid ? `/profile/?cid=${encodeURIComponent(cid)}` : '/leaders/';
 }
 
 function buildPhotoFallbackCandidates(initialSrc) {
@@ -415,7 +432,109 @@ function getFounderPortfolioUrl() {
   return found ? normalizeExternalUrl(found.url) : '';
 }
 
+let activeExpandedLeaderCard = null;
+let expandedAtScrollY = 0;
+let ignoreExpandScrollUntil = 0;
+let leaderExpandListenersBound = false;
+
+function setLeaderCardExpandedUI(cardEl, isExpanded) {
+  if (!cardEl) return;
+  cardEl.classList.toggle('is-expanded', isExpanded);
+  const btn = cardEl.querySelector('.leader-expand-btn');
+  if (btn) {
+    const leaderName = cardEl.dataset.leaderName || 'leader';
+    btn.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+    btn.setAttribute(
+      'aria-label',
+      isExpanded ? `Exit full size for ${leaderName}` : `Expand card for ${leaderName}`
+    );
+    btn.setAttribute('title', isExpanded ? 'Exit full size' : 'Full size');
+  }
+}
+
+function collapseExpandedLeaderCard() {
+  if (!activeExpandedLeaderCard) return;
+  setLeaderCardExpandedUI(activeExpandedLeaderCard, false);
+  activeExpandedLeaderCard = null;
+}
+
+function toggleLeaderCardExpanded(cardEl) {
+  if (!cardEl) return;
+  if (activeExpandedLeaderCard === cardEl) {
+    collapseExpandedLeaderCard();
+    return;
+  }
+
+  if (activeExpandedLeaderCard && activeExpandedLeaderCard !== cardEl) {
+    setLeaderCardExpandedUI(activeExpandedLeaderCard, false);
+  }
+
+  activeExpandedLeaderCard = cardEl;
+  setLeaderCardExpandedUI(cardEl, true);
+
+  expandedAtScrollY = window.scrollY || 0;
+  ignoreExpandScrollUntil = performance.now() + 360;
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      if (activeExpandedLeaderCard === cardEl) {
+        expandedAtScrollY = window.scrollY || 0;
+      }
+    });
+  });
+}
+
+function ensureLeaderExpandListeners() {
+  if (leaderExpandListenersBound) return;
+  leaderExpandListenersBound = true;
+
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (!activeExpandedLeaderCard) return;
+      if (performance.now() < ignoreExpandScrollUntil) return;
+      const currentY = window.scrollY || 0;
+      if (Math.abs(currentY - expandedAtScrollY) > 10) {
+        collapseExpandedLeaderCard();
+      }
+    },
+    { passive: true }
+  );
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && activeExpandedLeaderCard) {
+      collapseExpandedLeaderCard();
+    }
+  });
+
+  window.addEventListener('pageshow', () => {
+    collapseExpandedLeaderCard();
+  });
+}
+
+function hasActiveTextSelection() {
+  const sel = window.getSelection ? window.getSelection() : null;
+  return Boolean(sel && String(sel).trim().length > 0);
+}
+
+function navigateCardHref(href, event) {
+  if (!href) return;
+  if (event && (event.metaKey || event.ctrlKey) && window.self === window.top) {
+    const a = document.createElement('a');
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  }
+  window.location.href = href;
+}
+
 function renderFounderCardDOM(founderSlot, data, useLocalSrcset) {
+  ensureLeaderExpandListeners();
+
   const name = data.name || '';
   const role = data.role || '';
   const bio = data.bio || '';
@@ -424,7 +543,10 @@ function renderFounderCardDOM(founderSlot, data, useLocalSrcset) {
   const cid = data.cid || '';
   const initials = esc(getInitials(name));
 
+  // Inner "Profile ↗" link stays pointed at the Founder's profile page as before
   const profileHref = resolveLeaderProfileHref(data.p_link, cid, true);
+  // Clicking the Founder card itself navigates to /leaders/?id=a370517e-ec1a-4257-9677-9293f6bd8d6b
+  const founderLeaderDetailHref = FOUNDER_LEADER_DETAIL_URL;
   const portfolioUrl = getFounderPortfolioUrl();
   const whatsappHref = resolveWhatsappHref();
 
@@ -454,7 +576,13 @@ function renderFounderCardDOM(founderSlot, data, useLocalSrcset) {
   }
 
   founderSlot.innerHTML = `
-    <article class="founder-card" aria-label="${esc(role ? `${name}, ${role}` : name)}">
+    <article
+      class="founder-card founder-card--clickable"
+      role="link"
+      tabindex="0"
+      data-leader-href="${esc(founderLeaderDetailHref)}"
+      aria-label="${esc(role ? `${name}, ${role}` : name)}"
+    >
       <div class="founder-portrait-col">
         <div class="founder-portrait-stage">
           <span class="founder-crop-mark founder-crop-tl" aria-hidden="true"></span>
@@ -495,6 +623,31 @@ function renderFounderCardDOM(founderSlot, data, useLocalSrcset) {
     </article>
   `;
 
+  const founderCardEl = founderSlot.querySelector('.founder-card');
+  if (founderCardEl) {
+    founderCardEl.querySelectorAll('a, button').forEach(interactiveEl => {
+      interactiveEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    });
+
+    founderCardEl.addEventListener('click', (e) => {
+      if (e.target.closest('a, button')) return;
+      if (hasActiveTextSelection()) return;
+      collapseExpandedLeaderCard();
+      navigateCardHref(founderLeaderDetailHref, e);
+    });
+
+    founderCardEl.addEventListener('keydown', (e) => {
+      if (e.target !== founderCardEl) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        collapseExpandedLeaderCard();
+        navigateCardHref(founderLeaderDetailHref, e);
+      }
+    });
+  }
+
   const founderImg = founderSlot.querySelector('.founder-portrait-img');
   const fallbackTile = founderSlot.querySelector('.founder-portrait-fallback');
   if (founderImg && fallbackTile) {
@@ -506,6 +659,9 @@ function renderFounderCardDOM(founderSlot, data, useLocalSrcset) {
 }
 
 function renderLeaderCardsDOM(gridSlot, items, isSampleFallback) {
+  ensureLeaderExpandListeners();
+  collapseExpandedLeaderCard();
+
   if (!items.length) {
     gridSlot.innerHTML = '';
     gridSlot.hidden = true;
@@ -517,11 +673,23 @@ function renderLeaderCardsDOM(gridSlot, items, isSampleFallback) {
     const name = item.name || '';
     const role = item.role || '';
     const quote = item.quote || '';
+    const bio = item.bio || '';
+    const responsibilities = Array.isArray(item.responsibilities) ? item.responsibilities : [];
     const photoUrl = item.photo || '';
     const cid = item.cid || '';
     const initials = esc(getInitials(name));
+    const cardDetailHref = cid ? `/leaders/?id=${encodeURIComponent(cid)}` : '/leaders/';
     const profileHref = resolveLeaderProfileHref(item.p_link, cid, false);
+    const whatsappHref = resolveMemberWhatsappHref(item.whatsapp);
     const accessibleLabel = role ? `${name}, ${role}` : name;
+
+    const compactText = quote || bio;
+    const showDistinctQuote = Boolean(
+      quote &&
+      bio &&
+      quote.trim().toLowerCase() !== bio.trim().toLowerCase()
+    );
+    const expandedBioText = bio || quote;
 
     const avatarInner = photoUrl
       ? `
@@ -539,32 +707,166 @@ function renderLeaderCardsDOM(gridSlot, items, isSampleFallback) {
       `
       : `<span class="leader-initials-fallback" aria-hidden="true">${initials}</span>`;
 
+    const expandedMediaInner = photoUrl
+      ? `
+        <img
+          class="founder-portrait-img leader-expanded-portrait-img"
+          src="${esc(photoUrl)}"
+          width="720"
+          height="900"
+          loading="lazy"
+          decoding="async"
+          referrerpolicy="no-referrer"
+          alt="Portrait of ${esc(name)}"
+        >
+        <div class="founder-portrait-fallback" aria-hidden="true">${initials}</div>
+      `
+      : `<div class="founder-portrait-fallback is-active" aria-hidden="true">${initials}</div>`;
+
+    const sampleBadgeMarkup = isSampleFallback
+      ? `
+        <div class="leader-sample-row">
+          <span class="leader-sample-tag">SAMPLE</span>
+        </div>
+      `
+      : '';
+
     return `
-      <a href="${esc(profileHref)}" class="leader-item-card" aria-label="${esc(accessibleLabel)}">
-        <div class="leader-avatar-row">
-          <div class="leader-avatar">
-            ${avatarInner}
+      <article
+        class="leader-item-card"
+        role="link"
+        tabindex="0"
+        data-leader-href="${esc(cardDetailHref)}"
+        data-leader-name="${esc(name)}"
+        aria-label="${esc(accessibleLabel)}"
+      >
+        <button
+          type="button"
+          class="leader-expand-btn"
+          aria-expanded="false"
+          aria-label="Expand card for ${esc(name)}"
+          title="Full size"
+        >
+          <svg class="icon-expand" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <svg class="icon-collapse" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="4 14 10 14 10 20"></polyline>
+            <polyline points="20 10 14 10 14 4"></polyline>
+            <line x1="14" y1="10" x2="21" y2="3"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+        </button>
+
+        <div class="leader-compact-view">
+          <div class="leader-avatar-row">
+            <div class="leader-avatar">
+              ${avatarInner}
+            </div>
+            <div class="leader-meta-col">
+              <div class="leader-name">${esc(name)}</div>
+              ${role ? `<div class="leader-pos">${esc(role)}</div>` : ''}
+            </div>
           </div>
-          <div class="leader-meta-col">
-            <div class="leader-name">${esc(name)}</div>
-            ${role ? `<div class="leader-pos">${esc(role)}</div>` : ''}
+          ${compactText ? `<p class="leader-resp">${esc(compactText)}</p>` : ''}
+          ${sampleBadgeMarkup}
+        </div>
+
+        <div class="leader-expanded-view">
+          <div class="founder-portrait-col">
+            <div class="founder-portrait-stage">
+              <span class="founder-crop-mark founder-crop-tl" aria-hidden="true"></span>
+              <span class="founder-crop-mark founder-crop-bl" aria-hidden="true"></span>
+              <div class="founder-portrait-frame">
+                ${expandedMediaInner}
+                <span class="founder-spiral-strip" aria-hidden="true"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="founder-content-col">
+            <div class="leader-expanded-head">
+              <h3 class="founder-name">${esc(name)}</h3>
+              ${role ? `<div class="founder-title-badge">${esc(role)}</div>` : ''}
+            </div>
+            ${showDistinctQuote ? `<p class="leader-expanded-quote">“${esc(quote)}”</p>` : ''}
+            ${expandedBioText ? `<p class="founder-bio">${esc(expandedBioText)}</p>` : ''}
+            ${responsibilities.length ? `
+              <div>
+                <div class="founder-subheading">AREAS OF RESPONSIBILITY</div>
+                <ul class="founder-resp-list">
+                  ${responsibilities.map(r => `<li>${esc(r)}</li>`).join('')}
+                </ul>
+              </div>
+            ` : ''}
+            <div class="founder-links">
+              <a href="${esc(profileHref)}" class="founder-link">Profile ↗</a>
+              ${whatsappHref ? `<a href="${esc(whatsappHref)}" class="founder-link" target="_blank" rel="noopener noreferrer">WhatsApp ↗</a>` : ''}
+            </div>
+            ${sampleBadgeMarkup}
           </div>
         </div>
-        ${quote ? `<p class="leader-resp">${esc(quote)}</p>` : ''}
-        ${isSampleFallback ? `
-          <div style="margin-top:auto;">
-            <span style="font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:1px 5px; border-radius:3px;">SAMPLE</span>
-          </div>
-        ` : ''}
-      </a>
+      </article>
     `;
   }).join('');
+
+  gridSlot.querySelectorAll('.leader-item-card').forEach(cardEl => {
+    const expandBtn = cardEl.querySelector('.leader-expand-btn');
+    if (expandBtn) {
+      expandBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleLeaderCardExpanded(cardEl);
+      });
+    }
+
+    cardEl.querySelectorAll('a').forEach(linkEl => {
+      linkEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    });
+
+    cardEl.addEventListener('click', (e) => {
+      if (e.target.closest('a, button')) return;
+      if (hasActiveTextSelection()) return;
+
+      if (activeExpandedLeaderCard && activeExpandedLeaderCard !== cardEl) {
+        collapseExpandedLeaderCard();
+      }
+
+      const targetHref = cardEl.dataset.leaderHref || '';
+      navigateCardHref(targetHref, e);
+    });
+
+    cardEl.addEventListener('keydown', (e) => {
+      if (e.target !== cardEl) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (activeExpandedLeaderCard && activeExpandedLeaderCard !== cardEl) {
+          collapseExpandedLeaderCard();
+        }
+        const targetHref = cardEl.dataset.leaderHref || '';
+        navigateCardHref(targetHref, e);
+      }
+    });
+  });
 
   gridSlot.querySelectorAll('.leader-photo-img').forEach(img => {
     const fallbackEl = img.parentElement && img.parentElement.querySelector('.leader-initials-fallback');
     attachPhotoFallbackHandler(img, () => {
       img.hidden = true;
       if (fallbackEl) fallbackEl.hidden = false;
+    });
+  });
+
+  gridSlot.querySelectorAll('.leader-expanded-portrait-img').forEach(img => {
+    const fallbackTile = img.parentElement && img.parentElement.querySelector('.founder-portrait-fallback');
+    attachPhotoFallbackHandler(img, () => {
+      img.classList.add('is-broken');
+      if (fallbackTile) fallbackTile.classList.add('is-active');
     });
   });
 }
@@ -591,6 +893,9 @@ function renderSampleLeadersFallback(founderSlot, gridSlot) {
       name: l.name,
       role: l.position,
       quote: l.responsibility,
+      bio: l.bio || l.responsibility || '',
+      responsibilities: Array.isArray(l.responsibilities) ? l.responsibilities : [],
+      whatsapp: l.whatsapp || '',
       photo: resolveImageSrc(l.photo, IMAGE_DIRS.leaders)
     }));
     renderLeaderCardsDOM(gridSlot, sampleItems, true);
@@ -602,7 +907,7 @@ async function renderLeaders() {
   const gridSlot = document.getElementById('leaders-grid-slot');
   if (!founderSlot && !gridSlot) return;
 
-  const endpoint = `${SUPABASE_URL}/rest/v1/leaders?select=cid,sort_order,display_name,role,quote,bio,responsibilities,profile_i,p_link,profiles(name,photo)&order=sort_order.asc&limit=7`;
+  const endpoint = `${SUPABASE_URL}/rest/v1/leaders?select=cid,sort_order,display_name,role,quote,bio,responsibilities,profile_i,p_link,whatsapp,profiles(name,photo)&order=sort_order.asc&limit=7`;
 
   try {
     const response = await fetch(endpoint, {
@@ -653,6 +958,9 @@ async function renderLeaders() {
         name: resolveLeaderName(row),
         role: row.role ? String(row.role).trim() : '',
         quote: row.quote ? String(row.quote).trim() : '',
+        bio: row.bio ? String(row.bio).trim() : '',
+        responsibilities: parseResponsibilities(row.responsibilities),
+        whatsapp: row.whatsapp ? String(row.whatsapp).trim() : '',
         photo: resolveLeaderPhoto(row)
       }));
       renderLeaderCardsDOM(gridSlot, otherRows, false);
@@ -883,8 +1191,21 @@ function initShelfControls() {
 }
 
 /* ==========================================================================
-   14. Contact Form Handling
+   14. Contact Form Handling (Redirects to wa.me/TheIterationLab)
    ========================================================================== */
+function redirectToWhatsApp(waHref) {
+  const link = document.createElement('a');
+  link.href = waHref;
+  if (window.self !== window.top) {
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+  }
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
 function initContactForm() {
   const form = document.getElementById('contact-form');
   const feedback = document.getElementById('contact-feedback');
@@ -909,9 +1230,43 @@ function initContactForm() {
       return;
     }
 
-    feedback.textContent = `Thank you, ${name}. Your message regarding "${topic}" has been received by The Iteration Lab editorial and coordination desk.`;
+    const baseWaUrl = String(WHATSAPP_URL || 'https://wa.me/TheIterationLab')
+      .trim()
+      .replace(/\?.*$/, '')
+      .replace(/\s+/g, '');
+
+    const formattedMessage = [
+      '*The Iteration Lab — Coordination Desk Inquiry*',
+      '',
+      `*Name:* ${name}`,
+      `*Email:* ${email}`,
+      `*Category:* ${topic}`,
+      '',
+      '*Message:*',
+      msg
+    ].join('\n');
+
+    const waHref = `${baseWaUrl}?text=${encodeURIComponent(formattedMessage)}`;
+
+    feedback.textContent = '';
     feedback.className = 'form-feedback success';
     feedback.style.display = 'block';
+
+    const statusText = document.createElement('span');
+    statusText.textContent = `Redirecting to WhatsApp for The Iteration Lab admin… `;
+
+    const fallbackLink = document.createElement('a');
+    fallbackLink.href = waHref;
+    fallbackLink.target = '_blank';
+    fallbackLink.rel = 'noopener noreferrer';
+    fallbackLink.style.fontWeight = '700';
+    fallbackLink.style.textDecoration = 'underline';
+    fallbackLink.textContent = 'Open in WhatsApp ↗';
+
+    feedback.appendChild(statusText);
+    feedback.appendChild(fallbackLink);
+
+    redirectToWhatsApp(waHref);
     form.reset();
   });
 }

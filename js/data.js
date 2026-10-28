@@ -219,7 +219,7 @@ export const COLLEGE_PARTNERS = [
 
 export const TOP_LEADERS = {
   founder: {
-    cid: "founder",
+    cid: "a370517e-ec1a-4257-9677-9293f6bd8d6b",
     name: "Ikramul Hoque",
     title: "FOUNDER & Chief-DEVELOPER",
     photo: "Arik.webp",
@@ -240,12 +240,84 @@ export const TOP_LEADERS = {
   },
   // 6 stationary leadership cards (3x2 grid)
   leaders: [
-    { id: "lead-01", name: "Sample Leader 01", position: "Research & Peer-Review Lead", responsibility: "Overseeing peer-review cycles and student submission ethics.", sample: true },
-    { id: "lead-02", name: "Sample Leader 02", position: "Technical Systems Architect", responsibility: "Maintaining reproducible testing benches and open toolchains.", sample: true },
-    { id: "lead-03", name: "Sample Leader 03", position: "Academic Partnerships Director", responsibility: "Liaising with colleges, secondary institutions, and clubs.", sample: true },
-    { id: "lead-04", name: "Sample Leader 04", position: "Editorial & Publications", responsibility: "Curating student journal editions and pedagogical formatting.", sample: true },
-    { id: "lead-05", name: "Sample Leader 05", position: "Community & Student Engagement", responsibility: "Organizing student workshops, open demo days, and hackathons.", sample: true },
-    { id: "lead-06", name: "Sample Leader 06", position: "Open Source Tooling Curator", responsibility: "Reviewing student code repositories, licenses, and documentation.", sample: true }
+    {
+      id: "lead-01",
+      name: "Sample Leader 01",
+      position: "Research & Peer-Review Lead",
+      responsibility: "Overseeing peer-review cycles and student submission ethics.",
+      bio: "Coordinates multi-institution review cohorts, research methodology workshops, and publication quality checks for student manuscripts.",
+      responsibilities: [
+        "Peer-Review Coordination & Submission Ethics",
+        "Publication Quality Checks",
+        "Student Research Methodology Guidance"
+      ],
+      sample: true
+    },
+    {
+      id: "lead-02",
+      name: "Sample Leader 02",
+      position: "Technical Systems Architect",
+      responsibility: "Maintaining reproducible testing benches and open toolchains.",
+      bio: "Designs reproducible build pipelines, browser-based verification tools, and open-source software standards across lab registries.",
+      responsibilities: [
+        "Reproducible Testing Benches & CI Pipelines",
+        "Open-Source Registry Verification",
+        "Developer Tooling & Documentation"
+      ],
+      sample: true
+    },
+    {
+      id: "lead-03",
+      name: "Sample Leader 03",
+      position: "Academic Partnerships Director",
+      responsibility: "Liaising with colleges, secondary institutions, and clubs.",
+      bio: "Connects science clubs, college faculties, and regional research cohorts with The Iteration Lab's open publishing network.",
+      responsibilities: [
+        "Institutional & Science Club Alliances",
+        "Faculty Mentor Onboarding",
+        "Regional Outreach & Chapters"
+      ],
+      sample: true
+    },
+    {
+      id: "lead-04",
+      name: "Sample Leader 04",
+      position: "Editorial & Publications",
+      responsibility: "Curating student journal editions and pedagogical formatting.",
+      bio: "Shapes editorial guidelines, citation standards, and accessible manuscript formatting for first-time student researchers.",
+      responsibilities: [
+        "Journal Curation & Issue Assembly",
+        "Citation & Manuscript Formatting Standards",
+        "Author Editorial Feedback"
+      ],
+      sample: true
+    },
+    {
+      id: "lead-05",
+      name: "Sample Leader 05",
+      position: "Community & Student Engagement",
+      responsibility: "Organizing student workshops, open demo days, and hackathons.",
+      bio: "Facilitates collaborative study circles, monthly research roundtables, and open hardware/software demo sessions.",
+      responsibilities: [
+        "Monthly Research Roundtables & Demo Days",
+        "Student Onboarding & Community Support",
+        "Cross-Campus Working Groups"
+      ],
+      sample: true
+    },
+    {
+      id: "lead-06",
+      name: "Sample Leader 06",
+      position: "Open Source Tooling Curator",
+      responsibility: "Reviewing student code repositories, licenses, and documentation.",
+      bio: "Audits open-source submissions for permissive licensing, clean documentation, and browser/hardware reproducibility.",
+      responsibilities: [
+        "Repository & License Auditing",
+        "Software Release Readiness Reviews",
+        "Student Maintainer Mentorship"
+      ],
+      sample: true
+    }
   ]
 };
 

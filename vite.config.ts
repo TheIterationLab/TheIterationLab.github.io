@@ -39,6 +39,11 @@ function copyRootStaticDirs() {
         }
       }
 
+      const cnameSrc = resolve(__dirname, 'CNAME');
+      if (existsSync(cnameSrc)) {
+        copyFileSync(cnameSrc, resolve(__dirname, 'dist/CNAME'));
+      }
+
       // Mirror compiled profile/index.html to clean static aliases for GitHub Pages
       const builtProfileHtml = resolve(__dirname, 'dist/profile/index.html');
       if (existsSync(builtProfileHtml)) {
@@ -46,6 +51,8 @@ function copyRootStaticDirs() {
           'dist/profiles',
           'dist/profile/S/ikramulhoquearik',
           'dist/profiles/S/ikramulhoquearik',
+          'dist/profile/S/ikramul-hoque',
+          'dist/profiles/S/ikramul-hoque',
         ];
         for (const alias of aliasDirs) {
           const targetDir = resolve(__dirname, alias);
@@ -64,6 +71,14 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 3000,
+    strictPort: true,
+    allowedHosts: true,
+    hmr: process.env.DISABLE_HMR !== 'true',
+  },
+  preview: {
+    host: '0.0.0.0',
+    port: 3000,
+    allowedHosts: true,
   },
   build: {
     rollupOptions: {

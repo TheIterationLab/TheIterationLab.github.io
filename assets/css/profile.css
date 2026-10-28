@@ -259,6 +259,52 @@ body.profile-body {
   border-color: var(--prof-orange);
 }
 
+.prof-save-status {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #94A3B8;
+  white-space: nowrap;
+}
+
+.prof-save-status.is-saving {
+  color: #FDBA74;
+}
+
+.prof-save-status.is-saved {
+  color: #6EE7B7;
+}
+
+.prof-save-status.is-error {
+  color: #FCA5A5;
+}
+
+/* Status / Not Found Screen */
+.prof-status-screen {
+  padding: 96px 0 112px;
+  background: var(--prof-surface-alt);
+  border-bottom: 1px solid var(--prof-hairline);
+}
+
+.prof-status-screen[hidden],
+#main-content[hidden] {
+  display: none !important;
+}
+
+.prof-status-box {
+  max-width: 620px;
+  background: #FFFFFF;
+  border: 1px solid var(--prof-hairline-strong);
+  border-radius: 12px;
+  padding: 40px 36px;
+}
+
+.prof-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
 /* ==========================================================================
    3. Slide-Over Navigation Drawer
    ========================================================================== */
@@ -361,14 +407,15 @@ body.profile-body {
 .prof-hero {
   background: linear-gradient(180deg, #E3ECF3 0%, #EAF0F6 100%);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 2;
   padding-top: 44px;
 }
 
 .prof-hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
-  gap: 40px;
+  grid-template-columns: minmax(0, 0.98fr) minmax(0, 1.02fr);
+  gap: 36px;
   align-items: stretch;
 }
 
@@ -497,6 +544,10 @@ body.profile-body {
   border-color: #64748B;
 }
 
+.prof-cta-secondary[hidden] {
+  display: none !important;
+}
+
 .prof-cta-edit-switch {
   font-size: 12px;
   font-weight: 600;
@@ -514,22 +565,84 @@ body.profile-body {
 
 /* Right Column: Portrait Stage + Overlapping Orange Recent Researches Card */
 .prof-hero-visual {
+  --prof-portrait-w: min(364px, 61.5%);
   position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: flex-start;
-  min-height: 460px;
+  min-height: 468px;
 }
 
+/* Signature Founder Colorful Frame Stage (Offset Orange Outline + Crop Marks + Spiral Strip) */
+.prof-portrait-stage {
+  position: relative;
+  width: var(--prof-portrait-w);
+  padding: 5px 10px 10px 5px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+/* Thin orange outline frame offset behind the portrait */
+.prof-portrait-stage::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 0;
+  bottom: 0;
+  border: 1px solid var(--prof-orange-bright);
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Two crisp orange corner crop marks */
+.prof-crop-mark {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.prof-crop-tl {
+  top: 0;
+  left: 0;
+  border-top: 2px solid var(--prof-orange-bright);
+  border-left: 2px solid var(--prof-orange-bright);
+  border-top-left-radius: 3px;
+}
+
+.prof-crop-bl {
+  bottom: 5px;
+  left: 0;
+  border-bottom: 2px solid var(--prof-orange-bright);
+  border-left: 2px solid var(--prof-orange-bright);
+  border-bottom-left-radius: 3px;
+}
+
+/* 4:5 Portrait Frame with Filleted Corners — matches .prof-hero background so cutouts blend seamlessly */
 .prof-portrait-frame {
   position: relative;
-  width: min(390px, 82%);
+  z-index: 1;
+  width: 100%;
   aspect-ratio: 4 / 5;
-  border-radius: 10px 10px 0 0;
+  border-radius: 10px;
   overflow: hidden;
-  background: #DCE5EE;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-bottom: none;
+  background: linear-gradient(180deg, #E3ECF3 0%, #EAF0F6 100%);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+/* Colorful 5-stop logo spiral gradient strip along the portrait's bottom edge */
+.prof-spiral-strip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #00C2FF 0%, #0047AB 25%, #10B981 50%, #FACC15 75%, #FF7A00 100%);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .prof-portrait-img {
@@ -537,6 +650,17 @@ body.profile-body {
   height: 100%;
   object-fit: cover;
   object-position: 50% 16%;
+  display: block;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.prof-portrait-img.is-loading {
+  opacity: 0;
+}
+
+.prof-portrait-img[hidden] {
+  display: none !important;
 }
 
 .prof-portrait-fallback {
@@ -582,17 +706,20 @@ body.profile-body {
   display: none !important;
 }
 
-/* Vibrant Orange Floating Recent Researches Card (Overlaps Portrait Right) */
+/* Vibrant Orange Floating Recent Researches Card
+   Overlaps 20% of portrait's right-bottom corner; sits 50% on light hero & 50% on black band */
 .prof-recent-card {
   position: absolute;
-  right: 0;
-  bottom: 24px;
-  width: min(296px, 58%);
+  left: calc(var(--prof-portrait-w) * 0.8);
+  right: auto;
+  bottom: 0;
+  transform: translateY(50%);
+  width: min(284px, calc(100% - (var(--prof-portrait-w) * 0.8)));
   background: #D95308;
   color: #FFFFFF;
   border-radius: 10px;
   padding: 18px;
-  box-shadow: 0 20px 44px rgba(8, 9, 13, 0.22);
+  box-shadow: 0 22px 48px rgba(8, 9, 13, 0.34);
   z-index: 5;
   display: flex;
   flex-direction: column;
@@ -715,15 +842,12 @@ body.profile-body {
     max-width: 18ch;
   }
   .prof-hero-visual {
+    --prof-portrait-w: min(330px, 56%);
     min-height: 380px;
-    justify-content: center;
-  }
-  .prof-portrait-frame {
-    width: min(350px, 72%);
-    margin-right: auto;
+    justify-content: flex-start;
   }
   .prof-recent-card {
-    width: min(290px, 56%);
+    width: min(280px, calc(100% - (var(--prof-portrait-w) * 0.8)));
   }
 }
 
@@ -738,16 +862,16 @@ body.profile-body {
     padding-bottom: 24px;
     min-height: 0;
   }
-  .prof-portrait-frame {
-    width: min(260px, 72%);
+  .prof-portrait-stage {
+    width: min(272px, 76%);
     margin: 0 auto;
-    border-radius: 10px;
-    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   }
   .prof-recent-card {
     position: relative;
-    bottom: auto;
+    left: auto;
     right: auto;
+    bottom: auto;
+    transform: none;
     width: 100%;
   }
 }
@@ -756,9 +880,17 @@ body.profile-body {
    5. Obsidian Band: Quote + Description + Dynamic GPA / Research Strip
    ========================================================================== */
 .prof-obsidian-band {
+  position: relative;
+  z-index: 1;
   background: var(--prof-obsidian);
   color: #F8FAFC;
-  padding: 72px 0 56px;
+  padding: 156px 0 60px;
+}
+
+@media (max-width: 600px) {
+  .prof-obsidian-band {
+    padding: 64px 0 48px;
+  }
 }
 
 .prof-statement-wrap {
@@ -1137,10 +1269,42 @@ body.profile-body {
   border-radius: 12px;
   box-shadow: -12px 10px 32px rgba(15, 23, 42, 0.07);
   display: grid;
-  grid-template-columns: var(--prof-spine-width) minmax(0, 1fr);
+  grid-template-columns: var(--active-spine-width, var(--prof-spine-width)) minmax(0, 1fr);
   overflow: hidden;
   will-change: transform;
   transform-origin: left center;
+}
+
+/* Compact Empty States for Sparse Member Accounts (0 items in User View) */
+.prof-cv-empty {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--prof-hairline);
+  font-size: 14px;
+  color: var(--prof-ink-muted);
+}
+
+.prof-stack-section.is-empty-deck .prof-stack-runway {
+  height: auto !important;
+}
+
+.prof-stack-section.is-empty-deck .prof-stack-sticky {
+  position: static;
+  min-height: 0;
+  padding: 64px 0;
+}
+
+.prof-stack-section.is-empty-deck .prof-stack-stage {
+  height: auto;
+}
+
+.prof-stack-empty-card {
+  background: #FFFFFF;
+  border: 1px dashed var(--prof-hairline-strong);
+  border-radius: 10px;
+  padding: 28px 32px;
+  font-size: 14px;
+  color: var(--prof-ink-muted);
+  max-width: 760px;
 }
 
 /* Left Index Spine (Remains visible when subsequent cards stack from right to left) */
@@ -1519,11 +1683,24 @@ body.is-edit-mode [data-editable]:hover {
   word-break: break-word;
 }
 
+.prof-contact-row[hidden],
+#prof-contact-email-link[hidden],
+#prof-contact-email[hidden],
+#prof-contact-wa[hidden],
+#prof-contact-wa-edit[hidden] {
+  display: none !important;
+}
+
 .prof-contact-form-box {
   background: #FFFFFF;
   border: 1px solid var(--prof-hairline);
   border-radius: 10px;
   padding: 32px;
+}
+
+.prof-contact-form-box .btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 @media (max-width: 860px) {
