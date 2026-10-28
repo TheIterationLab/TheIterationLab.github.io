@@ -84,6 +84,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+        notfound: resolve(__dirname, '404.html'),
         login: resolve(__dirname, 'login.html'),
         profile: resolve(__dirname, 'profile/index.html'),
         leaders: resolve(__dirname, 'leaders/index.html'),

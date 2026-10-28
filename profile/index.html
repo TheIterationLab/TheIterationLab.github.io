@@ -6,6 +6,29 @@
   <title>Member Portfolio · The Iteration Lab</title>
   <meta name="description" content="Academic research portfolio, software builds, credentials, and publications on The Iteration Lab open educational research network.">
   <link rel="icon" type="image/png" href="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png">
+  <script>
+    (function () {
+      try {
+        var loc = window.location;
+        var params = new URLSearchParams(loc.search || '');
+        var restoredPath = params.get('__r');
+        try {
+          sessionStorage.removeItem('til_gh_profile_route');
+        } catch (_) {}
+        if (
+          restoredPath &&
+          restoredPath.charAt(0) === '/' &&
+          restoredPath.charAt(1) !== '/' &&
+          /^(\/[A-Za-z0-9._-]+)?\/profiles?(?:\/.*)?$/i.test(restoredPath)
+        ) {
+          params.delete('__r');
+          var remaining = params.toString();
+          var cleanUrl = restoredPath + (remaining ? '?' + remaining : '') + (loc.hash || '');
+          window.history.replaceState(null, '', cleanUrl);
+        }
+      } catch (_) {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">

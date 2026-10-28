@@ -763,9 +763,10 @@ function resolveRouteDescriptor() {
     .map((s) => decodeURIComponent(s.trim()))
     .filter((s) => s && !/^index\.html$/i.test(s));
 
-  // Strip leading "profile" or "profiles"
-  if (segments.length > 0 && /^profiles?$/i.test(segments[0])) {
-    segments.shift();
+  // Strip leading segments up to and including "profile" or "profiles"
+  const profIdx = segments.findIndex((s) => /^profiles?$/i.test(s));
+  if (profIdx !== -1) {
+    segments.splice(0, profIdx + 1);
   }
 
   if (segments.length >= 2 && /^[STRI]$/i.test(segments[0])) {
