@@ -1278,18 +1278,20 @@
           statusType.textContent = typeInfo ? typeInfo.display : cred.type;
 
           if (openPortfolioBtn) {
-            if (cred.type === 'I') {
-              openPortfolioBtn.href = '/institutes/?id=' + encodeURIComponent(uid);
-              openPortfolioBtn.textContent = 'View Institute Directory Page →';
-            } else if (uid === 'a370517e-ec1a-4257-9677-9293f6bd8d6b') {
+            var normType = (cred.type && /^[STRI]$/i.test(cred.type)) ? cred.type.toUpperCase() : 'S';
+            if (uid === 'a370517e-ec1a-4257-9677-9293f6bd8d6b') {
               openPortfolioBtn.href = '/profile/S/ikramulhoquearik';
               openPortfolioBtn.textContent = 'Open & Edit My Portfolio →';
             } else if (prof.slug) {
-              openPortfolioBtn.href = '/profile/?slug=' + encodeURIComponent(prof.slug);
-              openPortfolioBtn.textContent = 'Open & Edit My Portfolio →';
+              openPortfolioBtn.href = '/profile/' + normType + '/' + encodeURIComponent(prof.slug);
+              openPortfolioBtn.textContent = normType === 'I'
+                ? 'Open & Edit Institute Profile →'
+                : 'Open & Edit My Portfolio →';
             } else {
               openPortfolioBtn.href = '/profile/?cid=' + encodeURIComponent(uid);
-              openPortfolioBtn.textContent = 'Open & Edit My Portfolio →';
+              openPortfolioBtn.textContent = normType === 'I'
+                ? 'Open & Edit Institute Profile →'
+                : 'Open & Edit My Portfolio →';
             }
             openPortfolioBtn.hidden = false;
           }

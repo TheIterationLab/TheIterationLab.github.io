@@ -17,6 +17,12 @@
           var base = match[1] || '';
           var folder = (match[2] || '').toLowerCase();
           var rest = (match[3] || '').replace(/\/+$/, '');
+          var isEditRoute = /^edit(?:\/index\.html)?$/i.test(rest);
+          if (isEditRoute) {
+            document.documentElement.setAttribute('data-routing', '1');
+            loc.replace(base + '/profile/edit/' + (loc.search || '') + (loc.hash || ''));
+            return;
+          }
           var isBareCanonical = folder === 'profile' && (rest === '' || /^index\.html$/i.test(rest));
           if (!isBareCanonical) {
             document.documentElement.setAttribute('data-routing', '1');
@@ -27,6 +33,25 @@
               sessionStorage.setItem('til_gh_profile_route', path + (loc.search || '') + (loc.hash || ''));
             } catch (_) {}
             loc.replace(targetUrl);
+            return;
+          }
+        }
+        // Route dynamic /researches/<ILR_Id> and /softwares/<ILS_Id> clean URLs on GitHub Pages
+        var archiveMatch = path.match(/^(\/[A-Za-z0-9._-]+)?\/(researches|softwares)\/([^/?#]+)\/?$/i);
+        if (archiveMatch) {
+          var aBase = archiveMatch[1] || '';
+          var aFolder = (archiveMatch[2] || '').toLowerCase();
+          var aSeg = archiveMatch[3] || '';
+          if (
+            aSeg &&
+            !/^index\.html$/i.test(aSeg) &&
+            !/^img$/i.test(aSeg) &&
+            !/\.[a-z0-9]{2,5}$/i.test(aSeg)
+          ) {
+            document.documentElement.setAttribute('data-routing', '1');
+            var aParams = new URLSearchParams(loc.search || '');
+            aParams.set('__r', path);
+            loc.replace(aBase + '/' + aFolder + '/?' + aParams.toString() + (loc.hash || ''));
             return;
           }
         }

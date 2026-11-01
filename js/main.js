@@ -11,6 +11,7 @@ import {
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
+  FOUNDER_LEADER_CID,
   FOUNDER_LEADER_DETAIL_URL,
   FOUNDER_PORTFOLIO_URL,
   FOUNDER_PROFILE_URL,
@@ -68,46 +69,176 @@ function getInitials(name) {
   return (first + last).toUpperCase();
 }
 
+const UUID_RE_HOME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+let liveSearchPublications = null;
+let liveSearchSoftwares = null;
+let shelfCardNavBound = false;
+
+function parseHomeStringArray(val) {
+  if (Array.isArray(val)) {
+    return val.map((v) => cleanStringField(v)).filter(Boolean);
+  }
+  const s = cleanStringField(val);
+  if (!s) return [];
+  if (s.startsWith('{') && s.endsWith('}')) {
+    return s
+      .slice(1, -1)
+      .split(',')
+      .map((part) => cleanStringField(part.replace(/^"|"$/g, '')))
+      .filter(Boolean);
+  }
+  return s
+    .split(',')
+    .map((part) => cleanStringField(part))
+    .filter(Boolean);
+}
+
+function formatHomePublishDate(dateStr) {
+  const raw = cleanStringField(dateStr);
+  if (!raw) return '';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+function resolveHomeProfileHref(prof) {
+  if (!prof) return '';
+  const cid = cleanStringField(prof.cid);
+  if (cid === FOUNDER_LEADER_CID) return FOUNDER_PROFILE_URL;
+  const rawType = cleanStringField(prof.type).toUpperCase();
+  const acctType = ['S', 'T', 'I', 'R'].includes(rawType) ? rawType : 'S';
+  const slug = cleanStringField(prof.slug);
+  if (slug) return `/profile/${acctType}/${encodeURIComponent(slug)}`;
+  return cid ? `/profile/?cid=${encodeURIComponent(cid)}` : '';
+}
+
+async function fetchHomeProfilesMap(uuidList) {
+  const uniqueIds = Array.from(
+    new Set((uuidList || []).map((id) => cleanStringField(id)).filter((id) => UUID_RE_HOME.test(id)))
+  );
+  const map = new Map();
+  if (uniqueIds.length === 0) return map;
+
+  try {
+    const inList = uniqueIds.join(',');
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/profiles?select=cid,name,slug,type&cid=in.(${encodeURIComponent(inList)})`,
+      {
+        method: 'GET',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      }
+    );
+    if (!res.ok) return map;
+    const rows = await res.json();
+    if (Array.isArray(rows)) {
+      rows.forEach((p) => {
+        const cid = cleanStringField(p.cid);
+        if (cid) map.set(cid.toLowerCase(), p);
+      });
+    }
+  } catch (err) {
+    console.warn('Home profile lookup warning:', err);
+  }
+  return map;
+}
+
+function renderAuthorLinksMarkup(ids, profilesMap, fallbackText = 'Contributor') {
+  const cleanIds = parseHomeStringArray(ids);
+  if (cleanIds.length === 0) return esc(fallbackText);
+  return cleanIds
+    .map((id) => {
+      const prof = profilesMap.get(id.toLowerCase());
+      const name = prof ? cleanStringField(prof.name) || 'Contributor' : UUID_RE_HOME.test(id) ? 'Member' : id;
+      const href = prof ? resolveHomeProfileHref(prof) : UUID_RE_HOME.test(id) ? `/profile/?cid=${encodeURIComponent(id)}` : '';
+      if (href) {
+        return `<a href="${esc(href)}" class="card-author-link" data-author-link="true">${esc(name)}</a>`;
+      }
+      return esc(name);
+    })
+    .join(', ');
+}
+
+function bindShelfCardNavigation() {
+  if (shelfCardNavBound) return;
+  shelfCardNavBound = true;
+
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.shelf-card[data-card-href]');
+    if (!card) return;
+    if (hasActiveTextSelection()) return;
+    // Allow direct clicks on nested links (like author profile links or View in details anchor) to navigate naturally
+    if (e.target.closest('a, button')) return;
+    const href = card.getAttribute('data-card-href');
+    if (href) {
+      navigateCardHref(href, e);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest('.shelf-card[data-card-href]');
+    if (!card || e.target !== card) return;
+    e.preventDefault();
+    const href = card.getAttribute('data-card-href');
+    if (href) {
+      navigateCardHref(href, e);
+    }
+  });
+}
+
+function attachShelfThumbFallbacks(container) {
+  if (!container) return;
+  container.querySelectorAll('img.shelf-thumb-img').forEach((img) => {
+    img.addEventListener(
+      'error',
+      () => {
+        img.hidden = true;
+        const svgFallback = img.parentElement?.querySelector('[data-thumb-fallback]');
+        if (svgFallback) svgFallback.hidden = false;
+      },
+      { once: true }
+    );
+  });
+}
+
+function buildResearchSchematicSvg() {
+  return `
+    <svg width="100%" height="100%" viewBox="0 0 280 175" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="280" height="175" fill="#F8F9FA"/>
+      <line x1="20" y1="35" x2="160" y2="35" stroke="#E5E7EB" stroke-width="2"/>
+      <line x1="20" y1="50" x2="220" y2="50" stroke="#E5E7EB" stroke-width="2"/>
+      <line x1="20" y1="65" x2="200" y2="65" stroke="#E5E7EB" stroke-width="2"/>
+      <circle cx="210" cy="115" r="32" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <line x1="180" y1="115" x2="240" y2="115" stroke="#CBD5E1" stroke-width="1.5"/>
+      <line x1="210" y1="85" x2="210" y2="145" stroke="#CBD5E1" stroke-width="1.5"/>
+      <path d="M 30 135 L 70 95 L 110 120 L 160 80" stroke="#0047AB" stroke-width="2" fill="none"/>
+      <circle cx="160" cy="80" r="3" fill="#FF7A00"/>
+    </svg>
+  `;
+}
+
+function buildSoftwareSchematicSvg() {
+  return `
+    <svg width="100%" height="100%" viewBox="0 0 280 175" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="280" height="175" fill="#181920"/>
+      <rect x="20" y="25" width="240" height="125" rx="4" fill="#0A0A0C" stroke="#2B2C38"/>
+      <circle cx="36" cy="40" r="4" fill="#EF4444"/>
+      <circle cx="48" cy="40" r="4" fill="#F59E0B"/>
+      <circle cx="60" cy="40" r="4" fill="#10B981"/>
+      <path d="M 35 70 L 65 70 M 75 70 L 140 70 M 35 90 L 110 90 M 35 110 L 85 110" stroke="#4B5563" stroke-width="2" stroke-linecap="round"/>
+      <path d="M 180 75 L 230 115 M 230 75 L 180 115" stroke="#FF7A00" stroke-width="1.5" stroke-dasharray="2 2"/>
+    </svg>
+  `;
+}
+
 /* ==========================================================================
-   6. Research Works & Publications Shelf
+   6. Research Works & Publications Shelf (Live Supabase `researches`)
    ========================================================================== */
-function renderPublications() {
-  const track = document.getElementById('publications-track');
-  if (!track) return;
-
-  const cardsHtml = RESEARCH_PUBLICATIONS.map(item => `
-    <article class="shelf-card" aria-label="${esc(item.title)}">
-      <div>
-        <div class="card-thumb">
-          <svg width="100%" height="100%" viewBox="0 0 280 175" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="280" height="175" fill="#F8F9FA"/>
-            <line x1="20" y1="35" x2="160" y2="35" stroke="#E5E7EB" stroke-width="2"/>
-            <line x1="20" y1="50" x2="220" y2="50" stroke="#E5E7EB" stroke-width="2"/>
-            <line x1="20" y1="65" x2="200" y2="65" stroke="#E5E7EB" stroke-width="2"/>
-            <circle cx="210" cy="115" r="32" stroke="#CBD5E1" stroke-width="1.5" stroke-dasharray="3 3"/>
-            <line x1="180" y1="115" x2="240" y2="115" stroke="#CBD5E1" stroke-width="1.5"/>
-            <line x1="210" y1="85" x2="210" y2="145" stroke="#CBD5E1" stroke-width="1.5"/>
-            <path d="M 30 135 L 70 95 L 110 120 L 160 80" stroke="#0047AB" stroke-width="2" fill="none"/>
-            <circle cx="160" cy="80" r="3" fill="#FF7A00"/>
-          </svg>
-          <span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>
-        </div>
-        <div class="card-category">${esc(item.category)}</div>
-        <h3 class="card-title">${esc(item.title)}</h3>
-        <p class="card-desc">${esc(item.abstract)}</p>
-      </div>
-      <div>
-        <div class="card-meta">
-          <div><strong>Authors:</strong> ${esc(item.authors)}</div>
-          <div>${esc(item.institution)} · ${esc(item.date)}</div>
-        </div>
-        <button type="button" class="card-link open-paper-btn" data-id="${item.id}">Read research →</button>
-      </div>
-    </article>
-  `).join('');
-
-  // Final distinctive dark Explore All card with 2 buttons
-  const darkCard = `
+function buildPublicationsDarkCard() {
+  return `
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
@@ -122,50 +253,154 @@ function renderPublications() {
       </div>
     </div>
   `;
+}
 
-  track.innerHTML = cardsHtml + darkCard;
+function renderFallbackPublications(track) {
+  const sampleIds = ['ILR0001', 'ILR0002', 'ILR0003', 'ILR0004'];
+  const cardsHtml = RESEARCH_PUBLICATIONS.map((item, idx) => {
+    const ilrid = sampleIds[idx] || '';
+    const detailHref = ilrid ? `/researches/${encodeURIComponent(ilrid)}` : '/researches/';
+    return `
+      <article class="shelf-card shelf-card--clickable" role="link" tabindex="0" data-card-href="${esc(detailHref)}" aria-label="${esc(item.title)}">
+        <div>
+          <div class="card-thumb">
+            ${buildResearchSchematicSvg()}
+            <span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>
+          </div>
+          <div class="card-category">${esc(item.category)}</div>
+          <h3 class="card-title">${esc(item.title)}</h3>
+          <p class="card-desc">${esc(item.abstract)}</p>
+        </div>
+        <div>
+          <div class="card-meta">
+            <div><strong>Authors:</strong> ${esc(item.authors)}</div>
+            <div>${esc(item.institution)} · ${esc(item.date)}</div>
+          </div>
+          <a href="${esc(detailHref)}" class="card-link">View in details →</a>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  track.innerHTML = cardsHtml + buildPublicationsDarkCard();
+}
+
+async function renderPublications() {
+  const track = document.getElementById('publications-track');
+  if (!track) return;
+  bindShelfCardNavigation();
+
+  // Immediate initial render before network resolves
+  renderFallbackPublications(track);
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/researches?select=*&order=publish_date.desc.nullslast,ilrid.asc&limit=8`,
+      {
+        method: 'GET',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Researches fetch failed (${response.status})`);
+    }
+    const rows = await response.json();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return;
+    }
+
+    const allAuthorUids = [];
+    rows.forEach((r) => {
+      parseHomeStringArray(r.uid).forEach((u) => allAuthorUids.push(u));
+    });
+    const profilesMap = await fetchHomeProfilesMap(allAuthorUids);
+
+    liveSearchPublications = rows.map((row) => {
+      const ilrid = cleanStringField(row.ilrid);
+      const authorNames = parseHomeStringArray(row.uid)
+        .map((id) => cleanStringField(profilesMap.get(id.toLowerCase())?.name) || 'Contributor')
+        .join(', ');
+      return {
+        ilrid,
+        title: cleanStringField(row.title) || 'Untitled Research',
+        abstract: cleanStringField(row.abstract || row.details),
+        authors: authorNames || 'Contributor',
+        date: formatHomePublishDate(row.publish_date),
+        href: ilrid ? `/researches/${encodeURIComponent(ilrid)}` : '/researches/'
+      };
+    });
+
+    const cardsHtml = rows
+      .map((row) => {
+        const ilrid = cleanStringField(row.ilrid);
+        const title = cleanStringField(row.title) || 'Untitled Research';
+        const category = cleanStringField(row.category) || 'Research Paper';
+        const abstract = cleanStringField(row.abstract || row.details);
+        const coverSrc = resolveImageSrc(row.cover_url, IMAGE_DIRS.researches);
+        const pubDate = formatHomePublishDate(row.publish_date);
+        const reviewerCount = Array.isArray(row.reviewers) ? row.reviewers.length : 0;
+        const likesCount = Number(row.likes ?? 0);
+        const detailHref = ilrid ? `/researches/${encodeURIComponent(ilrid)}` : '/researches/';
+        const authorsHtml = renderAuthorLinksMarkup(row.uid, profilesMap, 'Contributor');
+        const subMeta = [
+          ilrid,
+          pubDate,
+          `Reviewed by ${reviewerCount}`,
+          `${likesCount} ${likesCount === 1 ? 'like' : 'likes'}`
+        ]
+          .filter(Boolean)
+          .join(' · ');
+
+        const thumbInner = coverSrc
+          ? `
+              <img class="shelf-thumb-img" src="${esc(coverSrc)}" alt="Cover of ${esc(title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+              <div data-thumb-fallback hidden style="width:100%;height:100%;">${buildResearchSchematicSvg()}</div>
+            `
+          : buildResearchSchematicSvg();
+
+        const sampleBadge =
+          row.is_sample === true
+            ? `<span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>`
+            : '';
+
+        return `
+          <article class="shelf-card shelf-card--clickable" role="link" tabindex="0" data-card-href="${esc(detailHref)}" aria-label="${esc(title)}">
+            <div>
+              <div class="card-thumb">
+                ${thumbInner}
+                ${sampleBadge}
+              </div>
+              <div class="card-category">${esc(category)}</div>
+              <h3 class="card-title">${esc(title)}</h3>
+              ${abstract ? `<p class="card-desc">${esc(abstract)}</p>` : ''}
+            </div>
+            <div>
+              <div class="card-meta">
+                <div><strong>Authors:</strong> ${authorsHtml}</div>
+                <div>${esc(subMeta)}</div>
+              </div>
+              <a href="${esc(detailHref)}" class="card-link">View in details →</a>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+
+    track.innerHTML = cardsHtml + buildPublicationsDarkCard();
+    attachShelfThumbFallbacks(track);
+  } catch (err) {
+    console.warn('Using fallback publications shelf:', err);
+  }
 }
 
 /* ==========================================================================
-   7. Software Builds Shelf
+   7. Software Builds Shelf (Live Supabase `software`)
    ========================================================================== */
-function renderSoftware() {
-  const track = document.getElementById('software-track');
-  if (!track) return;
-
-  const cardsHtml = SOFTWARE_BUILDS.map(item => `
-    <article class="shelf-card" aria-label="${esc(item.name)}">
-      <div>
-        <div class="card-thumb">
-          <svg width="100%" height="100%" viewBox="0 0 280 175" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="280" height="175" fill="#181920"/>
-            <rect x="20" y="25" width="240" height="125" rx="4" fill="#0A0A0C" stroke="#2B2C38"/>
-            <circle cx="36" cy="40" r="4" fill="#EF4444"/>
-            <circle cx="48" cy="40" r="4" fill="#F59E0B"/>
-            <circle cx="60" cy="40" r="4" fill="#10B981"/>
-            <path d="M 35 70 L 65 70 M 75 70 L 140 70 M 35 90 L 110 90 M 35 110 L 85 110" stroke="#4B5563" stroke-width="2" stroke-linecap="round"/>
-            <path d="M 180 75 L 230 115 M 230 75 L 180 115" stroke="#FF7A00" stroke-width="1.5" stroke-dasharray="2 2"/>
-          </svg>
-          <span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>
-          <span style="position:absolute; bottom:8px; right:8px; font-size:10px; font-weight:600; background:rgba(0,0,0,0.8); color:#A7F3D0; padding:2px 6px; border-radius:3px;">${esc(item.status)}</span>
-        </div>
-        <div class="card-category">Open Source Build</div>
-        <h3 class="card-title">${esc(item.name)}</h3>
-        <p class="card-desc">${esc(item.description)}</p>
-        <div style="display:flex; flex-wrap:wrap; gap:5px; margin: 8px 0 14px;">
-          ${item.tags.map(t => `<span class="chip">${esc(t)}</span>`).join('')}
-        </div>
-      </div>
-      <div>
-        <div class="card-meta">
-          <div><strong>Team / Creator:</strong> ${esc(item.team)}</div>
-        </div>
-        <button type="button" class="card-link open-sw-btn" data-id="${item.id}">Explore project →</button>
-      </div>
-    </article>
-  `).join('');
-
-  const darkCard = `
+function buildSoftwareDarkCard() {
+  return `
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
@@ -180,8 +415,149 @@ function renderSoftware() {
       </div>
     </div>
   `;
+}
 
-  track.innerHTML = cardsHtml + darkCard;
+function renderFallbackSoftware(track) {
+  const sampleIds = ['ILS0001', 'ILS0002', 'ILS0003'];
+  const cardsHtml = SOFTWARE_BUILDS.map((item, idx) => {
+    const ilsid = sampleIds[idx] || '';
+    const detailHref = ilsid ? `/softwares/${encodeURIComponent(ilsid)}` : '/softwares/';
+    return `
+      <article class="shelf-card shelf-card--clickable" role="link" tabindex="0" data-card-href="${esc(detailHref)}" aria-label="${esc(item.name)}">
+        <div>
+          <div class="card-thumb">
+            ${buildSoftwareSchematicSvg()}
+            <span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>
+            <span style="position:absolute; bottom:8px; right:8px; font-size:10px; font-weight:600; background:rgba(0,0,0,0.8); color:#A7F3D0; padding:2px 6px; border-radius:3px;">${esc(item.status)}</span>
+          </div>
+          <div class="card-category">Open Source Build</div>
+          <h3 class="card-title">${esc(item.name)}</h3>
+          <p class="card-desc">${esc(item.description)}</p>
+          <div style="display:flex; flex-wrap:wrap; gap:5px; margin: 8px 0 14px;">
+            ${item.tags.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}
+          </div>
+        </div>
+        <div>
+          <div class="card-meta">
+            <div><strong>Team / Creator:</strong> ${esc(item.team)}</div>
+          </div>
+          <a href="${esc(detailHref)}" class="card-link">View in details →</a>
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  track.innerHTML = cardsHtml + buildSoftwareDarkCard();
+}
+
+async function renderSoftware() {
+  const track = document.getElementById('software-track');
+  if (!track) return;
+  bindShelfCardNavigation();
+
+  renderFallbackSoftware(track);
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/software?select=*&order=publish_date.desc.nullslast,ilsid.asc&limit=8`,
+      {
+        method: 'GET',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Software fetch failed (${response.status})`);
+    }
+    const rows = await response.json();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return;
+    }
+
+    const allDevUids = [];
+    rows.forEach((s) => {
+      parseHomeStringArray(s.uid).forEach((u) => allDevUids.push(u));
+    });
+    const profilesMap = await fetchHomeProfilesMap(allDevUids);
+
+    liveSearchSoftwares = rows.map((row) => {
+      const ilsid = cleanStringField(row.ilsid);
+      return {
+        ilsid,
+        name: cleanStringField(row.name) || 'Untitled Software',
+        description: cleanStringField(row.description || row.tagline || row.details),
+        href: ilsid ? `/softwares/${encodeURIComponent(ilsid)}` : '/softwares/'
+      };
+    });
+
+    const cardsHtml = rows
+      .map((row) => {
+        const ilsid = cleanStringField(row.ilsid);
+        const name = cleanStringField(row.name) || 'Untitled Software';
+        const category = cleanStringField(row.category) || 'Open Source Build';
+        const status = cleanStringField(row.status);
+        const summary = cleanStringField(row.description || row.tagline || row.details);
+        const techTags = parseHomeStringArray(row.tech);
+        const imgSrc = resolveImageSrc(row.image_url, IMAGE_DIRS.softwares);
+        const detailHref = ilsid ? `/softwares/${encodeURIComponent(ilsid)}` : '/softwares/';
+        const devsHtml = renderAuthorLinksMarkup(row.uid, profilesMap, 'Developer');
+        const pubDate = formatHomePublishDate(row.publish_date);
+        const subMeta = [ilsid, pubDate].filter(Boolean).join(' · ');
+
+        const thumbInner = imgSrc
+          ? `
+              <img class="shelf-thumb-img" src="${esc(imgSrc)}" alt="Preview of ${esc(name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+              <div data-thumb-fallback hidden style="width:100%;height:100%;">${buildSoftwareSchematicSvg()}</div>
+            `
+          : buildSoftwareSchematicSvg();
+
+        const sampleBadge =
+          row.is_sample === true
+            ? `<span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>`
+            : '';
+
+        const statusBadge = status
+          ? `<span style="position:absolute; bottom:8px; right:8px; font-size:10px; font-weight:600; background:rgba(0,0,0,0.8); color:#A7F3D0; padding:2px 6px; border-radius:3px;">${esc(status)}</span>`
+          : '';
+
+        return `
+          <article class="shelf-card shelf-card--clickable" role="link" tabindex="0" data-card-href="${esc(detailHref)}" aria-label="${esc(name)}">
+            <div>
+              <div class="card-thumb">
+                ${thumbInner}
+                ${sampleBadge}
+                ${statusBadge}
+              </div>
+              <div class="card-category">${esc(category)}</div>
+              <h3 class="card-title">${esc(name)}</h3>
+              ${summary ? `<p class="card-desc">${esc(summary)}</p>` : ''}
+              ${
+                techTags.length > 0
+                  ? `<div style="display:flex; flex-wrap:wrap; gap:5px; margin: 8px 0 14px;">
+                      ${techTags.slice(0, 5).map((t) => `<span class="chip">${esc(t)}</span>`).join('')}
+                    </div>`
+                  : ''
+              }
+            </div>
+            <div>
+              <div class="card-meta">
+                <div><strong>Developers:</strong> ${devsHtml}</div>
+                ${subMeta ? `<div>${esc(subMeta)}</div>` : ''}
+              </div>
+              <a href="${esc(detailHref)}" class="card-link">View in details →</a>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+
+    track.innerHTML = cardsHtml + buildSoftwareDarkCard();
+    attachShelfThumbFallbacks(track);
+  } catch (err) {
+    console.warn('Using fallback software shelf:', err);
+  }
 }
 
 /* ==========================================================================
@@ -1398,44 +1774,78 @@ function initSearchModal() {
       return;
     }
 
-    const matchedPubs = RESEARCH_PUBLICATIONS.filter(p => p.title.toLowerCase().includes(q) || p.abstract.toLowerCase().includes(q));
-    const matchedSw = SOFTWARE_BUILDS.filter(s => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q));
-    const matchedStudents = STUDENT_PROFILES.filter(st => st.name.toLowerCase().includes(q) || st.interests.toLowerCase().includes(q));
+    const pubSource =
+      Array.isArray(liveSearchPublications) && liveSearchPublications.length > 0
+        ? liveSearchPublications
+        : RESEARCH_PUBLICATIONS.map((p, idx) => ({
+            ilrid: `ILR000${idx + 1}`,
+            title: p.title,
+            abstract: p.abstract,
+            authors: p.authors,
+            date: p.date,
+            href: `/researches/ILR000${idx + 1}`
+          }));
+
+    const swSource =
+      Array.isArray(liveSearchSoftwares) && liveSearchSoftwares.length > 0
+        ? liveSearchSoftwares
+        : SOFTWARE_BUILDS.map((s, idx) => ({
+            ilsid: `ILS000${idx + 1}`,
+            name: s.name,
+            description: s.description,
+            href: `/softwares/ILS000${idx + 1}`
+          }));
+
+    const matchedPubs = pubSource.filter(
+      (p) =>
+        p.title.toLowerCase().includes(q) ||
+        (p.abstract || '').toLowerCase().includes(q) ||
+        (p.ilrid || '').toLowerCase().includes(q)
+    );
+    const matchedSw = swSource.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.description || '').toLowerCase().includes(q) ||
+        (s.ilsid || '').toLowerCase().includes(q)
+    );
+    const matchedStudents = STUDENT_PROFILES.filter(
+      (st) => st.name.toLowerCase().includes(q) || st.interests.toLowerCase().includes(q)
+    );
 
     let html = '';
 
     if (matchedPubs.length) {
       html += `<div style="font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--brand-orange); text-transform:uppercase; margin:8px 0 4px;">Research Papers</div>`;
-      matchedPubs.forEach(p => {
+      matchedPubs.forEach((p) => {
         html += `
-          <div style="padding:10px; border-bottom:1px solid var(--border-light);">
+          <a href="${esc(p.href || '/researches/')}" class="search-result-link">
             <div style="font-family:var(--font-serif); font-size:15px; font-weight:600; color:var(--text-main);">${esc(p.title)}</div>
-            <div style="font-size:12px; color:var(--text-secondary);">${esc(p.authors)} · ${esc(p.date)}</div>
-          </div>
+            <div style="font-size:12px; color:var(--text-secondary);">${esc([p.ilrid, p.authors, p.date].filter(Boolean).join(' · '))} · View in details →</div>
+          </a>
         `;
       });
     }
 
     if (matchedSw.length) {
       html += `<div style="font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--accent-blue); text-transform:uppercase; margin:14px 0 4px;">Software Builds</div>`;
-      matchedSw.forEach(s => {
+      matchedSw.forEach((s) => {
         html += `
-          <div style="padding:10px; border-bottom:1px solid var(--border-light);">
+          <a href="${esc(s.href || '/softwares/')}" class="search-result-link">
             <div style="font-size:14px; font-weight:700; color:var(--text-main);">${esc(s.name)}</div>
-            <div style="font-size:12px; color:var(--text-secondary);">${esc(s.description)}</div>
-          </div>
+            <div style="font-size:12px; color:var(--text-secondary);">${esc(s.description)} · View in details →</div>
+          </a>
         `;
       });
     }
 
     if (matchedStudents.length) {
       html += `<div style="font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin:14px 0 4px;">Students</div>`;
-      matchedStudents.forEach(st => {
+      matchedStudents.forEach((st) => {
         html += `
-          <div style="padding:10px; border-bottom:1px solid var(--border-light);">
+          <a href="/students/" class="search-result-link">
             <div style="font-size:14px; font-weight:700; color:var(--text-main);">${esc(st.name)}</div>
             <div style="font-size:12px; color:var(--text-secondary);">${esc(st.interests)}</div>
-          </div>
+          </a>
         `;
       });
     }
@@ -1449,7 +1859,7 @@ function initSearchModal() {
 }
 
 /* ==========================================================================
-   Detail Reading Modal
+   Detail Reading Modal (Teacher/Student preview cards)
    ========================================================================== */
 function initDetailModal() {
   const modal = document.getElementById('detail-modal');
@@ -1478,62 +1888,7 @@ function initDetailModal() {
     if (e.key === 'Escape' && modal.classList.contains('open')) closeDetail();
   });
 
-  // Attach click listener for publications
   document.addEventListener('click', (e) => {
-    const pubBtn = e.target.closest('.open-paper-btn');
-    if (pubBtn) {
-      const id = pubBtn.getAttribute('data-id');
-      const item = RESEARCH_PUBLICATIONS.find(p => p.id === id);
-      if (item) {
-        openDetail(item.title, `
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="font-family:var(--font-mono); font-size:12px; color:var(--brand-orange);">${esc(item.category)} · DOI: ${esc(item.doi)}</div>
-            <div style="font-size:14px; color:var(--text-secondary); line-height:1.6;">
-              <strong>Authors:</strong> ${esc(item.authors)}<br>
-              <strong>Affiliation:</strong> ${esc(item.institution)}<br>
-              <strong>Published:</strong> ${esc(item.date)} (${esc(item.readTime)})
-            </div>
-            <hr style="border:0; border-top:1px solid var(--border-light);">
-            <div style="font-family:var(--font-serif); font-size:18px; font-weight:600;">Abstract & Methodology</div>
-            <p style="font-size:15px; color:var(--text-main); line-height:1.7;">${esc(item.abstract)}</p>
-            <div style="background:var(--bg-subtle); border:1px solid var(--border-light); border-radius:6px; padding:16px;">
-              <div style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--text-main); margin-bottom:6px;">BibTeX Citation</div>
-              <pre style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); white-space:pre-wrap; overflow-x:auto;">@article{til_${item.id.replace(/-/g, '_')},
-  title={${item.title}},
-  author={${item.authors}},
-  journal={The Iteration Lab Student Research Annals},
-  year={2026},
-  doi={${item.doi}}
-}</pre>
-            </div>
-            <a href="login.html" class="btn btn-orange" style="width:fit-content;">Submit Peer Review / Discussion</a>
-          </div>
-        `);
-      }
-    }
-
-    const swBtn = e.target.closest('.open-sw-btn');
-    if (swBtn) {
-      const id = swBtn.getAttribute('data-id');
-      const item = SOFTWARE_BUILDS.find(s => s.id === id);
-      if (item) {
-        openDetail(item.name, `
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="font-size:13px; color:var(--text-muted);">Status: <strong style="color:#059669;">${esc(item.status)}</strong></div>
-            <p style="font-size:15px; color:var(--text-main); line-height:1.6;">${esc(item.description)}</p>
-            <div>
-              <strong style="font-size:13px;">Team / Maintainers:</strong>
-              <div style="font-size:14px; color:var(--text-secondary);">${esc(item.team)}</div>
-            </div>
-            <div style="display:flex; flex-wrap:wrap; gap:6px;">
-              ${item.tags.map(t => `<span class="chip">${esc(t)}</span>`).join('')}
-            </div>
-            <a href="login.html" class="btn btn-orange" style="width:fit-content;">Request Code Access / Join Team</a>
-          </div>
-        `);
-      }
-    }
-
     const profBtn = e.target.closest('.open-profile-btn');
     if (profBtn) {
       const type = profBtn.getAttribute('data-type');
@@ -1556,7 +1911,7 @@ function initDetailModal() {
               ✓ Verified in The Iteration Lab Academic Directory
             </div>
             <div style="margin-top:8px;">
-              <a href="/profile/?type=${type === 'teacher' ? 'T' : 'S'}" class="btn btn-orange" style="width:fit-content;">Open Full Portfolio →</a>
+              <a href="${type === 'teacher' ? '/teachers/' : '/students/'}" class="btn btn-orange" style="width:fit-content;">Open Directory →</a>
             </div>
           </div>
         `);

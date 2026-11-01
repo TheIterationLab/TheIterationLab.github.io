@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { cpSync, existsSync, mkdirSync, copyFileSync } from 'node:fs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function copyRootStaticDirs() {
   return {
@@ -9,12 +12,33 @@ function copyRootStaticDirs() {
       server.middlewares.use((req, _res, next) => {
         const rawUrl = req.url || '';
         const pathname = rawUrl.split('?')[0];
-        if (
+        if (/^\/profiles?\/edit\/?$/i.test(pathname)) {
+          const search = rawUrl.includes('?') ? rawUrl.slice(rawUrl.indexOf('?')) : '';
+          req.url = `/profile/edit/index.html${search}`;
+        } else if (
           /^\/profiles?(\/.*)?$/i.test(pathname) &&
+          !/^\/profiles?\/edit(\/|$)/i.test(pathname) &&
           !/\.[a-z0-9]+$/i.test(pathname)
         ) {
           const search = rawUrl.includes('?') ? rawUrl.slice(rawUrl.indexOf('?')) : '';
           req.url = `/profile/index.html${search}`;
+        } else if (
+          /^\/researches\/[^/]+\/?$/i.test(pathname) &&
+          !/^\/researches\/(index\.html|img)(\/|$)/i.test(pathname) &&
+          !/\.[a-z0-9]+$/i.test(pathname)
+        ) {
+          const search = rawUrl.includes('?') ? rawUrl.slice(rawUrl.indexOf('?')) : '';
+          req.url = `/researches/index.html${search}`;
+        } else if (
+          /^\/softwares\/[^/]+\/?$/i.test(pathname) &&
+          !/^\/softwares\/(index\.html|img)(\/|$)/i.test(pathname) &&
+          !/\.[a-z0-9]+$/i.test(pathname)
+        ) {
+          const search = rawUrl.includes('?') ? rawUrl.slice(rawUrl.indexOf('?')) : '';
+          req.url = `/softwares/index.html${search}`;
+        } else if (/^\/teams\/?$/i.test(pathname)) {
+          const search = rawUrl.includes('?') ? rawUrl.slice(rawUrl.indexOf('?')) : '';
+          req.url = `/teams/index.html${search}`;
         }
         next();
       });
@@ -22,6 +46,7 @@ function copyRootStaticDirs() {
     closeBundle() {
       const staticDirs = [
         'public',
+        'src/assets/images',
         'leaders/img',
         'students/img',
         'teachers/img',
@@ -60,6 +85,20 @@ function copyRootStaticDirs() {
           copyFileSync(builtProfileHtml, resolve(targetDir, 'index.html'));
         }
       }
+
+      const builtResearchesHtml = resolve(__dirname, 'dist/researches/index.html');
+      if (existsSync(builtResearchesHtml)) {
+        const sampleResDir = resolve(__dirname, 'dist/researches/ILR0001');
+        mkdirSync(sampleResDir, { recursive: true });
+        copyFileSync(builtResearchesHtml, resolve(sampleResDir, 'index.html'));
+      }
+
+      const builtSoftwaresHtml = resolve(__dirname, 'dist/softwares/index.html');
+      if (existsSync(builtSoftwaresHtml)) {
+        const sampleSwDir = resolve(__dirname, 'dist/softwares/ILS0001');
+        mkdirSync(sampleSwDir, { recursive: true });
+        copyFileSync(builtSoftwaresHtml, resolve(sampleSwDir, 'index.html'));
+      }
     },
   };
 }
@@ -87,6 +126,7 @@ export default defineConfig({
         notfound: resolve(__dirname, '404.html'),
         login: resolve(__dirname, 'login.html'),
         profile: resolve(__dirname, 'profile/index.html'),
+        profileEdit: resolve(__dirname, 'profile/edit/index.html'),
         leaders: resolve(__dirname, 'leaders/index.html'),
         researches: resolve(__dirname, 'researches/index.html'),
         students: resolve(__dirname, 'students/index.html'),
@@ -94,6 +134,7 @@ export default defineConfig({
         institutes: resolve(__dirname, 'institutes/index.html'),
         softwares: resolve(__dirname, 'softwares/index.html'),
         communities: resolve(__dirname, 'communities/index.html'),
+        teams: resolve(__dirname, 'teams/index.html'),
       },
     },
   },

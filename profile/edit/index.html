@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Profile · The Iteration Lab</title>
+  <meta name="description" content="Manage your legal identity, academic standing, certificates, portfolio sections, research papers, and software builds on The Iteration Lab.">
+  <link rel="icon" type="image/png" href="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/assets/css/profile.css">
+  <link rel="stylesheet" href="/assets/css/profile-edit.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body class="pe-body">
+  <a href="#pe-main-anchor" class="skip-link">Skip to profile editor</a>
+
+  <!-- STICKY TOP BAR -->
+  <header class="pe-topbar" role="banner">
+    <div class="container pe-topbar-inner">
+      <div class="pe-topbar-left">
+        <a href="/" class="prof-brand" aria-label="The Iteration Lab Home">
+          <span class="prof-brand-mark">
+            <img src="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="The Iteration Lab Emblem" width="28" height="28" referrerpolicy="no-referrer">
+          </span>
+          <span class="prof-brand-name">The Iteration Lab</span>
+        </a>
+        <span class="pe-topbar-divider" aria-hidden="true">/</span>
+        <span class="pe-topbar-crumb">Edit Profile</span>
+      </div>
+
+      <div class="pe-topbar-right">
+        <div
+          id="pe-save-status"
+          class="pe-save-status"
+          role="status"
+          aria-live="polite"
+          data-state="idle"
+        >
+          <span id="pe-save-status-text">Saved</span>
+        </div>
+
+        <a
+          href="/profile/"
+          id="pe-view-profile-link"
+          class="btn btn-orange pe-view-btn"
+        >View my profile ↗</a>
+      </div>
+    </div>
+  </header>
+
+  <div id="pe-main-anchor" tabindex="-1"></div>
+
+  <!-- AUTH / INITIAL LOAD GATE -->
+  <section id="pe-gate" class="pe-gate" aria-live="polite">
+    <div class="container">
+      <div class="pe-gate-card">
+        <div class="prof-section-index" id="pe-gate-kicker">Authenticating Session</div>
+        <h1 class="pe-gate-title" id="pe-gate-title">Loading your portfolio workspace…</h1>
+        <p class="pe-gate-desc" id="pe-gate-desc">Verifying your Supabase session and fetching your owner records.</p>
+        <div id="pe-gate-actions" class="pe-gate-actions" hidden>
+          <a href="/login.html" class="btn btn-orange">Sign In</a>
+          <a href="/" class="btn btn-secondary">Return Home</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN PROFILE EDITOR WORKSPACE -->
+  <main id="pe-main" class="pe-main" hidden>
+    <div class="container pe-container">
+      <!-- WORKSPACE INTRO & QUICK CONTROLS -->
+      <div class="pe-hero-bar">
+        <div>
+          <div class="pe-kicker-line">Member Portfolio Workspace</div>
+          <h1 class="pe-page-title" id="pe-owner-heading">Edit Your Portfolio</h1>
+          <p class="pe-page-sub">
+            Changes validate and save automatically when you leave a field, or immediately when you click any section’s <strong>Save</strong> button.
+          </p>
+        </div>
+        <div class="pe-hero-bar-actions">
+          <button type="button" id="pe-expand-all-btn" class="btn btn-secondary pe-compact-btn">Expand all</button>
+          <button type="button" id="pe-collapse-all-btn" class="btn btn-secondary pe-compact-btn">Collapse all</button>
+        </div>
+      </div>
+
+      <!-- SECTION JUMP STRIP -->
+      <nav class="pe-jump-nav" id="pe-jump-nav" aria-label="Editor sections">
+        <a href="#sec-basics" class="pe-jump-link" data-jump-target="sec-basics" data-jump-label="Identity &amp; Basics">01. Identity &amp; Basics</a>
+        <a href="#sec-affiliation" class="pe-jump-link" data-jump-target="sec-affiliation" data-jump-label="Affiliation &amp; Campus" hidden>02. Affiliation &amp; Campus</a>
+        <a href="#sec-metrics" class="pe-jump-link" data-jump-target="sec-metrics" data-jump-label="Academic &amp; GPA">03. Academic &amp; GPA</a>
+        <a href="#sec-switches" class="pe-jump-link" data-jump-target="sec-switches" data-jump-label="Hero &amp; WhatsApp">04. Hero &amp; WhatsApp</a>
+        <a href="#sec-photo" class="pe-jump-link" data-jump-target="sec-photo" data-jump-label="Portrait">05. Portrait</a>
+        <a href="#sec-cv" class="pe-jump-link" data-jump-target="sec-cv" data-jump-label="CV Timelines">06. CV Timelines</a>
+        <a href="#sec-cards" class="pe-jump-link" data-jump-target="sec-cards" data-jump-label="Skills &amp; Activities">07. Skills &amp; Activities</a>
+        <a href="#sec-researches" class="pe-jump-link" data-jump-target="sec-researches" data-jump-label="Researches">08. Researches</a>
+        <a href="#sec-softwares" class="pe-jump-link" data-jump-target="sec-softwares" data-jump-label="Softwares">09. Softwares</a>
+      </nav>
+
+      <!-- ================================================================
+           1. LEGAL IDENTITY, SLUG & BASICS (table: public.profiles)
+           ================================================================ -->
+      <section class="pe-section" id="sec-basics" data-collapsible>
+        <button
+          type="button"
+          class="pe-section-header"
+          aria-expanded="true"
+          aria-controls="body-basics"
+        >
+          <div class="pe-section-header-copy">
+            <span class="pe-section-num">01</span>
+            <div>
+              <h2 class="pe-section-title" id="sec-basics-title">Legal Identity, URL Slug &amp; Portfolio Basics</h2>
+              <p class="pe-section-summary" id="sec-basics-summary">Full legal names, numeric registration, custom profile slug, hero headline, contact details, statement quote, and biography.</p>
+            </div>
+          </div>
+          <span class="pe-chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="pe-section-body" id="body-basics">
+          <!-- Read-only Account Identifiers -->
+          <div class="pe-readonly-strip" aria-label="Read-only account metadata">
+            <div class="pe-readonly-cell">
+              <span class="pe-readonly-label">Account ID (cid)</span>
+              <code class="pe-readonly-val" id="ro-cid">—</code>
+            </div>
+            <div class="pe-readonly-cell">
+              <span class="pe-readonly-label">Account Type</span>
+              <code class="pe-readonly-val" id="ro-type">—</code>
+            </div>
+            <div class="pe-readonly-cell">
+              <span class="pe-readonly-label">Active Public URL</span>
+              <code class="pe-readonly-val" id="ro-slug">—</code>
+            </div>
+            <div class="pe-readonly-cell">
+              <span class="pe-readonly-label">Verification</span>
+              <code class="pe-readonly-val" id="ro-verified">—</code>
+            </div>
+          </div>
+
+          <!-- Dynamic Empty-State Notice for Null Legal / Registration Columns -->
+          <div id="pe-legal-missing-banner" class="pe-missing-banner" role="status" aria-live="polite" hidden>
+            <div class="pe-missing-banner-title" id="pe-legal-missing-title">Complete your legal &amp; registration record</div>
+            <p class="pe-missing-banner-desc" id="pe-legal-missing-text"></p>
+          </div>
+
+          <form id="form-basics" class="pe-form" novalidate>
+            <!-- Legal Identity & Registration Block -->
+            <div class="pe-block-heading" id="block-legal-heading">
+              <h3 class="pe-subpanel-title" id="block-legal-title">Legal Identity &amp; Registration</h3>
+              <p class="pe-subpanel-desc" id="block-legal-desc">Shows your saved database values. Any field currently empty in the database prompts for your official legal record and remains editable anytime.</p>
+            </div>
+
+            <div class="pe-grid-2">
+              <div class="input-group" id="group-name">
+                <div class="pe-label-row">
+                  <label for="f-name" class="input-label" id="lbl-f-name">Full Legal Name (<code>name</code>) <span class="pe-req">*</span></label>
+                  <span class="pe-char-count" data-for="f-name">0 / 120</span>
+                </div>
+                <input type="text" id="f-name" data-profile-col="name" class="input-field" maxlength="120" required autocomplete="name" placeholder="Enter your full legal name">
+                <div class="pe-null-prompt" id="null-name" hidden>Database value is empty — please enter your full legal name.</div>
+                <div class="pe-field-error" id="err-name" role="alert"></div>
+              </div>
+
+              <div class="input-group" id="group-registration">
+                <div class="pe-label-row">
+                  <label for="f-registration" class="input-label">Registration Number (<code>registration</code>)</label>
+                  <span class="pe-char-count" data-for="f-registration">0 / 30</span>
+                </div>
+                <input type="text" id="f-registration" data-profile-col="registration" class="input-field pe-num-input" inputmode="numeric" pattern="[0-9]*" maxlength="30" placeholder="Enter registration number (digits only)">
+                <div class="pe-null-prompt" id="null-registration" hidden>Database value is empty — please enter your registration number (numbers only).</div>
+                <div class="pe-field-hint">Numbers only (0–9). Letters, spaces, and symbols are not allowed.</div>
+                <div class="pe-field-error" id="err-registration" role="alert"></div>
+              </div>
+
+              <div class="input-group" id="group-father_name">
+                <div class="pe-label-row">
+                  <label for="f-father_name" class="input-label">Father’s Full Legal Name (<code>father_name</code>)</label>
+                  <span class="pe-char-count" data-for="f-father_name">0 / 120</span>
+                </div>
+                <input type="text" id="f-father_name" data-profile-col="father_name" class="input-field" maxlength="120" placeholder="Enter father’s full legal name">
+                <div class="pe-null-prompt" id="null-father_name" hidden>Database value is empty — please enter your father’s full legal name.</div>
+                <div class="pe-field-error" id="err-father_name" role="alert"></div>
+              </div>
+
+              <div class="input-group" id="group-mother_name">
+                <div class="pe-label-row">
+                  <label for="f-mother_name" class="input-label">Mother’s Full Legal Name (<code>mother_name</code>)</label>
+                  <span class="pe-char-count" data-for="f-mother_name">0 / 120</span>
+                </div>
+                <input type="text" id="f-mother_name" data-profile-col="mother_name" class="input-field" maxlength="120" placeholder="Enter mother’s full legal name">
+                <div class="pe-null-prompt" id="null-mother_name" hidden>Database value is empty — please enter your mother’s full legal name.</div>
+                <div class="pe-field-error" id="err-mother_name" role="alert"></div>
+              </div>
+            </div>
+
+            <div class="pe-divider"></div>
+
+            <!-- Custom Profile URL Slug & Role Identity -->
+            <div class="pe-block-heading">
+              <h3 class="pe-subpanel-title">Profile URL Slug, Role &amp; Hero Copy</h3>
+              <p class="pe-subpanel-desc">Customize your clean portfolio address and public hero presentation.</p>
+            </div>
+
+            <div class="pe-grid-2">
+              <div class="input-group" id="group-slug">
+                <div class="pe-label-row">
+                  <label for="f-slug" class="input-label">Profile URL Slug (<code>slug</code>)</label>
+                  <span class="pe-char-count" data-for="f-slug">0 / 60</span>
+                </div>
+                <input type="text" id="f-slug" data-profile-col="slug" class="input-field pe-num-input" maxlength="60" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="e.g. ikramul-hoque">
+                <div class="pe-field-hint" id="hint-slug-preview">Lowercase letters, numbers, and hyphens. Checked automatically for uniqueness.</div>
+                <div class="pe-field-error" id="err-slug" role="alert"></div>
+              </div>
+
+              <div class="input-group" id="group-profession">
+                <div class="pe-label-row">
+                  <label for="f-profession" class="input-label">Profession / Role Kicker (<code>profession</code>)</label>
+                  <span class="pe-char-count" data-for="f-profession">0 / 80</span>
+                </div>
+                <input type="text" id="f-profession" data-profile-col="profession" class="input-field" maxlength="80" placeholder="e.g. CNC Machining &amp; CAD/CAM Student">
+                <div class="pe-field-error" id="err-profession" role="alert"></div>
+              </div>
+
+              <div class="input-group" id="group-institution_override">
+                <div class="pe-label-row">
+                  <label for="f-institution_override" class="input-label">Institution Override (<code>institution_override</code>)</label>
+                  <span class="pe-char-count" data-for="f-institution_override">0 / 160</span>
+                </div>
+                <input type="text" id="f-institution_override" data-profile-col="institution_override" class="input-field" maxlength="160" placeholder="Leave blank to use verified EIIN / Leader role">
+                <div class="pe-field-hint">Overrides your default affiliated college or role subtitle on the portfolio hero.</div>
+                <div class="pe-field-error" id="err-institution_override" role="alert"></div>
+              </div>
+
+              <div class="input-group" id="group-location">
+                <div class="pe-label-row">
+                  <label for="f-location" class="input-label" id="lbl-f-location">Location (<code>location</code>)</label>
+                  <span class="pe-char-count" data-for="f-location">0 / 120</span>
+                </div>
+                <input type="text" id="f-location" data-profile-col="location" class="input-field" maxlength="120" placeholder="e.g. Chattogram, Bangladesh">
+                <div class="pe-field-error" id="err-location" role="alert"></div>
+              </div>
+            </div>
+
+            <div class="input-group" id="group-q1">
+              <div class="pe-label-row">
+                <label for="f-q1" class="input-label" id="lbl-f-q1">Hero Headline (<code>q1</code>)</label>
+                <span class="pe-char-count" data-for="f-q1">0 / 140</span>
+              </div>
+              <input type="text" id="f-q1" data-profile-col="q1" class="input-field" maxlength="140" placeholder="e.g. Turning curiosity into precision, one machined part at a time.">
+              <div class="pe-field-error" id="err-q1" role="alert"></div>
+            </div>
+
+            <div class="input-group" id="group-research_interests">
+              <div class="pe-label-row">
+                <label for="f-research_interests" class="input-label">Hero Lead / Research Interests (<code>research_interests</code>)</label>
+                <span class="pe-char-count" data-for="f-research_interests">0 / 500</span>
+              </div>
+              <textarea id="f-research_interests" data-profile-col="research_interests" class="input-field pe-textarea" rows="3" maxlength="500" placeholder="Summarize your focus areas, methods, and scholarly interests..."></textarea>
+              <div class="pe-field-error" id="err-research_interests" role="alert"></div>
+            </div>
+
+            <div class="input-group" id="group-public_email">
+              <div class="pe-label-row">
+                <label for="f-public_email" class="input-label" id="lbl-f-public_email">Public Correspondence Email (<code>public_email</code>)</label>
+                <span class="pe-char-count" data-for="f-public_email">0 / 160</span>
+              </div>
+              <input type="email" id="f-public_email" data-profile-col="public_email" class="input-field" maxlength="160" placeholder="name@institution.edu.bd">
+              <div class="pe-field-hint">Leave blank to hide email on your public portfolio.</div>
+              <div class="pe-field-error" id="err-public_email" role="alert"></div>
+            </div>
+
+            <div class="pe-divider" id="divider-philosophy"></div>
+
+            <!-- Statement & Biography -->
+            <div class="pe-block-heading" id="block-philosophy-heading">
+              <h3 class="pe-subpanel-title" id="block-philosophy-title">Philosophy Statement &amp; Biography</h3>
+              <p class="pe-subpanel-desc" id="block-philosophy-desc">Displayed in the editorial statement section of your public portfolio.</p>
+            </div>
+
+            <div class="input-group" id="group-statement_kicker">
+              <div class="pe-label-row">
+                <label for="f-statement_kicker" class="input-label">Statement Kicker (<code>statement_kicker</code>)</label>
+                <span class="pe-char-count" data-for="f-statement_kicker">0 / 60</span>
+              </div>
+              <input type="text" id="f-statement_kicker" data-profile-col="statement_kicker" class="input-field" maxlength="60" placeholder="e.g. MY APPROACH">
+              <div class="pe-field-error" id="err-statement_kicker" role="alert"></div>
+            </div>
+
+            <div class="input-group" id="group-q2">
+              <div class="pe-label-row">
+                <label for="f-q2" class="input-label">Statement Quote (<code>q2</code>)</label>
+                <span class="pe-char-count" data-for="f-q2">0 / 260</span>
+              </div>
+              <textarea id="f-q2" data-profile-col="q2" class="input-field pe-textarea" rows="2" maxlength="260" placeholder="A concise guiding principle or research philosophy quote..."></textarea>
+              <div class="pe-field-error" id="err-q2" role="alert"></div>
+            </div>
+
+            <div class="input-group" id="group-bio">
+              <div class="pe-label-row">
+                <label for="f-bio" class="input-label" id="lbl-f-bio">Biography / Statement Description (<code>bio</code>)</label>
+                <span class="pe-char-count" data-for="f-bio">0 / 800</span>
+              </div>
+              <textarea id="f-bio" data-profile-col="bio" class="input-field pe-textarea" rows="4" maxlength="800" placeholder="Write your full academic and engineering biography..."></textarea>
+              <div class="pe-field-error" id="err-bio" role="alert"></div>
+            </div>
+
+            <div class="pe-section-footer">
+              <div class="pe-section-msg" id="msg-basics" role="status" aria-live="polite"></div>
+              <button type="submit" class="btn btn-orange" id="save-basics-btn">Save Identity &amp; Basics</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           1B. ROLE & INSTITUTIONAL RECORD (students / teachers / institutes)
+           ================================================================ -->
+      <section class="pe-section" id="sec-affiliation" data-collapsible hidden>
+        <button
+          type="button"
+          class="pe-section-header"
+          aria-expanded="true"
+          aria-controls="body-affiliation"
+        >
+          <div class="pe-section-header-copy">
+            <span class="pe-section-num">02</span>
+            <div>
+              <h2 class="pe-section-title" id="sec-affiliation-title">College Affiliation &amp; Role Record</h2>
+              <p class="pe-section-summary" id="sec-affiliation-summary">Link your EIIN code and role-specific institutional attributes.</p>
+            </div>
+          </div>
+          <span class="pe-chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="pe-section-body" id="body-affiliation">
+          <form id="form-affiliation" class="pe-form" novalidate>
+            <!-- Institute Facebook-style Cover Banner Preview & Controls (Type I only) -->
+            <div id="panel-inst-cover" class="pe-inst-cover-block" hidden>
+              <div class="pe-block-heading">
+                <h3 class="pe-subpanel-title">Campus Cover Banner (Facebook-Style Header)</h3>
+                <p class="pe-subpanel-desc">Displayed behind your college crest and name at <code>/profile/I/&lt;username&gt;</code>.</p>
+              </div>
+
+              <div class="pe-inst-cover-stage">
+                <img id="pe-inst-cover-img" class="pe-inst-cover-img" alt="Institute cover banner preview" referrerpolicy="no-referrer" hidden>
+                <div id="pe-inst-cover-fallback" class="pe-inst-cover-fallback"></div>
+                <div class="pe-inst-cover-overlay">
+                  <div class="pe-inst-crest-mini" id="pe-inst-crest-mini">IL</div>
+                  <div class="pe-inst-overlay-meta">
+                    <span class="pe-inst-overlay-kicker" id="pe-inst-preview-type">Partner Institution</span>
+                    <strong class="pe-inst-overlay-name" id="pe-inst-preview-name">Institute Name</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="input-group">
+                <div class="pe-label-row">
+                  <label for="f-i-cover_url" class="input-label">Cover Banner Image URL (<code>institutes.cover_url</code>)</label>
+                  <span class="pe-char-count" data-for="f-i-cover_url">0 / 1000</span>
+                </div>
+                <input type="text" id="f-i-cover_url" class="input-field" maxlength="1000" placeholder="https://... or /institutes/img/campus-cover.webp">
+                <div class="pe-field-hint">Paste a direct image URL or test a wide banner photo below (1280px WebP conversion).</div>
+                <div class="pe-field-error" id="err-i-cover_url" role="alert"></div>
+              </div>
+
+              <div class="pe-modal-upload-inline">
+                <label for="pe-inst-cover-file" class="input-label">Preview / Compress Wide Cover Photo (JPEG, PNG, WebP · Max 2 MB)</label>
+                <input type="file" id="pe-inst-cover-file" class="pe-file-input" accept="image/jpeg,image/png,image/webp,image/avif">
+                <div class="pe-field-hint" id="pe-inst-cover-status">Converts locally to 1280px WebP to preview how your campus banner frames behind the crest.</div>
+              </div>
+
+              <div class="pe-divider"></div>
+            </div>
+
+            <!-- Shared EIIN Field (Students, Teachers, Institutes) -->
+            <div class="pe-grid-2" id="grid-aff-top">
+              <div class="input-group" id="group-aff-eiin">
+                <div class="pe-label-row">
+                  <label for="f-aff-eiin" class="input-label" id="lbl-aff-eiin">Affiliated College EIIN (<code>eiin</code>)</label>
+                  <span class="pe-char-count" data-for="f-aff-eiin">0 / 20</span>
+                </div>
+                <input type="text" id="f-aff-eiin" class="input-field pe-num-input" maxlength="20" placeholder="e.g. 108274">
+                <div class="pe-field-hint" id="hint-aff-eiin">Enter your college’s official EIIN to link your profile automatically to its institute page.</div>
+                <div class="pe-field-error" id="err-aff-eiin" role="alert"></div>
+              </div>
+
+              <!-- Teacher Designation (Type T) -->
+              <div class="input-group" id="group-t-designation" hidden>
+                <div class="pe-label-row">
+                  <label for="f-t-designation" class="input-label">Academic Designation (<code>teachers.designation</code>)</label>
+                  <span class="pe-char-count" data-for="f-t-designation">0 / 120</span>
+                </div>
+                <input type="text" id="f-t-designation" class="input-field" maxlength="120" placeholder="e.g. Associate Professor · Senior Lecturer">
+                <div class="pe-field-error" id="err-t-designation" role="alert"></div>
+              </div>
+
+              <!-- Institute Type (Type I) -->
+              <div class="input-group" id="group-i-institute_type" hidden>
+                <div class="pe-label-row">
+                  <label for="f-i-institute_type" class="input-label">Institute Category (<code>institutes.institute_type</code>)</label>
+                  <span class="pe-char-count" data-for="f-i-institute_type">0 / 80</span>
+                </div>
+                <input type="text" id="f-i-institute_type" class="input-field" maxlength="80" placeholder="e.g. Higher Secondary &amp; Degree College">
+                <div class="pe-field-error" id="err-i-institute_type" role="alert"></div>
+              </div>
+            </div>
+
+            <!-- Teacher Specific Fields & Live Scholarship Metrics (Type T) -->
+            <div id="panel-aff-teacher" class="pe-role-subpanel" hidden>
+              <div class="pe-grid-2">
+                <div class="input-group">
+                  <div class="pe-label-row">
+                    <label for="f-t-department" class="input-label">Department / Faculty (<code>teachers.department</code>)</label>
+                    <span class="pe-char-count" data-for="f-t-department">0 / 120</span>
+                  </div>
+                  <input type="text" id="f-t-department" class="input-field" maxlength="120" placeholder="e.g. Department of Physics">
+                  <div class="pe-field-error" id="err-t-department" role="alert"></div>
+                </div>
+
+                <div class="input-group">
+                  <label for="f-t-researches_reviewed" class="input-label">Total Researches Reviewed (<code>teachers.researches_reviewed</code>)</label>
+                  <input type="text" id="f-t-researches_reviewed" class="input-field pe-num-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="0">
+                  <div class="pe-field-hint">Your profile shows the higher of this count or live papers listing your ID in <code>researches.reviewers</code>.</div>
+                  <div class="pe-field-error" id="err-t-researches_reviewed" role="alert"></div>
+                </div>
+              </div>
+
+              <div class="pe-live-stat-strip" aria-label="Live teacher scholarship counters">
+                <div class="pe-live-stat-cell">
+                  <span class="pe-live-stat-label">Platform Peer Reviews</span>
+                  <strong class="pe-live-stat-val" id="ro-t-live-reviewed">00</strong>
+                </div>
+                <div class="pe-live-stat-cell">
+                  <span class="pe-live-stat-label">Displayed Total Reviewed</span>
+                  <strong class="pe-live-stat-val" id="ro-t-total-reviewed">00</strong>
+                </div>
+                <div class="pe-live-stat-cell">
+                  <span class="pe-live-stat-label">Total Researches Published</span>
+                  <strong class="pe-live-stat-val" id="ro-t-published">00</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Institute Specific Registry & Campus Strength Fields (Type I) -->
+            <div id="panel-aff-institute" class="pe-role-subpanel" hidden>
+              <div class="pe-grid-2">
+                <div class="input-group">
+                  <div class="pe-label-row">
+                    <label for="f-i-established_year" class="input-label">Established Year (<code>institutes.established_year</code>)</label>
+                    <span class="pe-char-count" data-for="f-i-established_year">0 / 4</span>
+                  </div>
+                  <input type="text" id="f-i-established_year" class="input-field pe-num-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="e.g. 1949">
+                  <div class="pe-field-error" id="err-i-established_year" role="alert"></div>
+                </div>
+
+                <div class="input-group">
+                  <div class="pe-label-row">
+                    <label for="f-i-website" class="input-label">Official Website (<code>institutes.website</code>)</label>
+                    <span class="pe-char-count" data-for="f-i-website">0 / 300</span>
+                  </div>
+                  <input type="url" id="f-i-website" class="input-field" maxlength="300" placeholder="https://college.edu.bd">
+                  <div class="pe-field-error" id="err-i-website" role="alert"></div>
+                </div>
+              </div>
+
+              <div class="input-group">
+                <div class="pe-label-row">
+                  <label for="f-i-address" class="input-label">Full Campus Street Address (<code>institutes.address</code>)</label>
+                  <span class="pe-char-count" data-for="f-i-address">0 / 240</span>
+                </div>
+                <input type="text" id="f-i-address" class="input-field" maxlength="240" placeholder="e.g. Toyenbee Circular Road, Motijheel, Dhaka-1000">
+                <div class="pe-field-error" id="err-i-address" role="alert"></div>
+              </div>
+
+              <div class="pe-grid-2">
+                <div class="input-group">
+                  <label for="f-i-total_students" class="input-label">Total Students on Campus (<code>institutes.total_students</code>)</label>
+                  <input type="text" id="f-i-total_students" class="input-field pe-num-input" inputmode="numeric" pattern="[0-9]*" maxlength="7" placeholder="e.g. 6500">
+                  <div class="pe-field-hint">Overall campus enrollment. Member students &amp; publications are tallied automatically by EIIN.</div>
+                  <div class="pe-field-error" id="err-i-total_students" role="alert"></div>
+                </div>
+
+                <div class="input-group">
+                  <label for="f-i-total_teachers" class="input-label">Total Teachers on Faculty (<code>institutes.total_teachers</code>)</label>
+                  <input type="text" id="f-i-total_teachers" class="input-field pe-num-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="e.g. 140">
+                  <div class="pe-field-hint">Overall faculty count. Member teachers &amp; publications are tallied automatically by EIIN.</div>
+                  <div class="pe-field-error" id="err-i-total_teachers" role="alert"></div>
+                </div>
+              </div>
+
+              <div class="pe-live-stat-strip pe-live-stat-strip--5" aria-label="Live member cohort and publication counters">
+                <div class="pe-live-stat-cell">
+                  <span class="pe-live-stat-label">Member Students</span>
+                  <strong class="pe-live-stat-val" id="ro-i-member-students">0</strong>
+                </div>
+                <div class="pe-live-stat-cell">
+                  <span class="pe-live-stat-label">Student Researches</span>
+                  <strong class="pe-live-stat-val" id="ro-i-student-researches">0</strong>
+                </div>
+                <div class="pe-live-stat-cell">
+                  <span class="pe-live-stat-label">Student Softwares</span>
+                  <strong class="pe-live-stat-val" id="ro-i-student-softwares">0</strong>
+                </div>
+                <div class="pe-live-stat-cell">
+                  <span class="pe-live-stat-label">Member Teachers</span>
+                  <strong class="pe-live-stat-val" id="ro-i-member-teachers">0</strong>
+                </div>
+                <div class="pe-live-stat-cell">
+                  <span class="pe-live-stat-label">Teacher Researches</span>
+                  <strong class="pe-live-stat-val" id="ro-i-teacher-researches">0</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="pe-section-footer">
+              <div class="pe-section-msg" id="msg-affiliation" role="status" aria-live="polite"></div>
+              <button type="submit" class="btn btn-orange" id="save-affiliation-btn">Save Institutional Record</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           2. ACADEMIC METRICS & BATCH YEARS (table: public.profiles)
+           ================================================================ -->
+      <section class="pe-section" id="sec-metrics" data-collapsible>
+        <button
+          type="button"
+          class="pe-section-header"
+          aria-expanded="true"
+          aria-controls="body-metrics"
+        >
+          <div class="pe-section-header-copy">
+            <span class="pe-section-num">02</span>
+            <div>
+              <h2 class="pe-section-title">Academic Batches, Decimal GPAs &amp; Research Metric</h2>
+              <p class="pe-section-summary">SSC &amp; HSC batch years (2–4 digits), decimal GPAs (0.00–5.00; whole numbers like 5 auto-format to 5.00), subtitles, and research metric subject.</p>
+            </div>
+          </div>
+          <span class="pe-chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="pe-section-body" id="body-metrics">
+          <form id="form-metrics" class="pe-form" novalidate>
+            <div class="pe-metrics-grid">
+              <!-- SSC -->
+              <div class="pe-metric-card">
+                <div class="pe-metric-card-title">SSC Examination</div>
+                <div class="pe-grid-2">
+                  <div class="input-group">
+                    <div class="pe-label-row">
+                      <label for="f-ssc_batch" class="input-label">SSC Batch (<code>ssc_batch</code>)</label>
+                      <span class="pe-char-count" data-for="f-ssc_batch">0 / 4</span>
+                    </div>
+                    <input type="text" id="f-ssc_batch" data-metric-col="ssc_batch" class="input-field pe-num-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="e.g. 2023 or 23">
+                    <div class="pe-field-hint">2–4 digits only.</div>
+                    <div class="pe-field-error" id="err-ssc_batch" role="alert"></div>
+                  </div>
+
+                  <div class="input-group">
+                    <label for="f-ssc_gpa" class="input-label">SSC GPA (<code>ssc_gpa</code>)</label>
+                    <input type="text" id="f-ssc_gpa" data-metric-col="ssc_gpa" class="input-field pe-num-input" inputmode="decimal" maxlength="5" placeholder="0.00">
+                    <div class="pe-field-hint">Decimal 0.00–5.00 (5 → 5.00).</div>
+                    <div class="pe-field-error" id="err-ssc_gpa" role="alert"></div>
+                  </div>
+                </div>
+
+                <div class="input-group">
+                  <div class="pe-label-row">
+                    <label for="f-ssc_sub" class="input-label">SSC Subtitle (<code>ssc_sub</code>)</label>
+                    <span class="pe-char-count" data-for="f-ssc_sub">0 / 60</span>
+                  </div>
+                  <input type="text" id="f-ssc_sub" data-metric-col="ssc_sub" class="input-field" maxlength="60" placeholder="e.g. Science · Chittagong Board">
+                  <div class="pe-field-error" id="err-ssc_sub" role="alert"></div>
+                </div>
+              </div>
+
+              <!-- HSC -->
+              <div class="pe-metric-card">
+                <div class="pe-metric-card-title">HSC / Diploma Examination</div>
+                <div class="pe-grid-2">
+                  <div class="input-group">
+                    <div class="pe-label-row">
+                      <label for="f-hsc_batch" class="input-label">HSC Batch (<code>hsc_batch</code>)</label>
+                      <span class="pe-char-count" data-for="f-hsc_batch">0 / 4</span>
+                    </div>
+                    <input type="text" id="f-hsc_batch" data-metric-col="hsc_batch" class="input-field pe-num-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="e.g. 2025 or 25">
+                    <div class="pe-field-hint">2–4 digits only.</div>
+                    <div class="pe-field-error" id="err-hsc_batch" role="alert"></div>
+                  </div>
+
+                  <div class="input-group">
+                    <label for="f-hsc_gpa" class="input-label">HSC GPA (<code>hsc_gpa</code>)</label>
+                    <input type="text" id="f-hsc_gpa" data-metric-col="hsc_gpa" class="input-field pe-num-input" inputmode="decimal" maxlength="5" placeholder="0.00">
+                    <div class="pe-field-hint">Decimal 0.00–5.00 (5 → 5.00).</div>
+                    <div class="pe-field-error" id="err-hsc_gpa" role="alert"></div>
+                  </div>
+                </div>
+
+                <div class="input-group">
+                  <div class="pe-label-row">
+                    <label for="f-hsc_sub" class="input-label">HSC Subtitle (<code>hsc_sub</code>)</label>
+                    <span class="pe-char-count" data-for="f-hsc_sub">0 / 60</span>
+                  </div>
+                  <input type="text" id="f-hsc_sub" data-metric-col="hsc_sub" class="input-field" maxlength="60" placeholder="e.g. Science · Batch 2025">
+                  <div class="pe-field-error" id="err-hsc_sub" role="alert"></div>
+                </div>
+              </div>
+
+              <!-- UG -->
+              <div class="pe-metric-card">
+                <div class="pe-metric-card-title">Undergraduate / Others</div>
+                <div class="input-group">
+                  <label for="f-ug_cgpa" class="input-label">UG CGPA (<code>ug_cgpa</code> · 0.00–5.00)</label>
+                  <input type="text" id="f-ug_cgpa" data-metric-col="ug_cgpa" class="input-field pe-num-input" inputmode="decimal" maxlength="5" placeholder="0.00">
+                  <div class="pe-field-hint">Setting UG CGPA to 0.00 hides it on your profile and clears UG Subtitle.</div>
+                  <div class="pe-field-error" id="err-ug_cgpa" role="alert"></div>
+                </div>
+                <div class="input-group">
+                  <div class="pe-label-row">
+                    <label for="f-ug_sub" class="input-label">UG Subtitle (<code>ug_sub</code>)</label>
+                    <span class="pe-char-count" data-for="f-ug_sub">0 / 60</span>
+                  </div>
+                  <input type="text" id="f-ug_sub" data-metric-col="ug_sub" class="input-field" maxlength="60" placeholder="e.g. B.Sc. Mechanical Engineering">
+                  <div class="pe-field-error" id="err-ug_sub" role="alert"></div>
+                </div>
+              </div>
+
+              <!-- GRAD -->
+              <div class="pe-metric-card">
+                <div class="pe-metric-card-title">Graduate</div>
+                <div class="input-group">
+                  <label for="f-grad_cgpa" class="input-label">Graduate CGPA (<code>grad_cgpa</code> · 0.00–5.00)</label>
+                  <input type="text" id="f-grad_cgpa" data-metric-col="grad_cgpa" class="input-field pe-num-input" inputmode="decimal" maxlength="5" placeholder="0.00">
+                  <div class="pe-field-hint">Setting Graduate CGPA to 0.00 hides it on your profile and clears Graduate Subtitle.</div>
+                  <div class="pe-field-error" id="err-grad_cgpa" role="alert"></div>
+                </div>
+                <div class="input-group">
+                  <div class="pe-label-row">
+                    <label for="f-grad_sub" class="input-label">Graduate Subtitle (<code>grad_sub</code>)</label>
+                    <span class="pe-char-count" data-for="f-grad_sub">0 / 60</span>
+                  </div>
+                  <input type="text" id="f-grad_sub" data-metric-col="grad_sub" class="input-field" maxlength="60" placeholder="e.g. M.Sc. Computational Physics">
+                  <div class="pe-field-error" id="err-grad_sub" role="alert"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pe-grid-2">
+              <div class="input-group">
+                <div class="pe-label-row">
+                  <label for="f-research_metric_sub" class="input-label">Research Metric Subject / Subtitle (<code>research_metric_sub</code>)</label>
+                  <span class="pe-char-count" data-for="f-research_metric_sub">0 / 60</span>
+                </div>
+                <input type="text" id="f-research_metric_sub" data-metric-col="research_metric_sub" class="input-field" maxlength="60" placeholder="e.g. Published &amp; Indexed">
+                <div class="pe-field-error" id="err-research_metric_sub" role="alert"></div>
+              </div>
+
+              <div class="input-group">
+                <span class="input-label">Indexed Research Count (Automatic)</span>
+                <div class="pe-derived-box" id="ro-research-count">00 works</div>
+                <div class="pe-field-hint">Computed automatically from your authored rows in <code>public.researches</code>.</div>
+              </div>
+            </div>
+
+            <div class="pe-section-footer">
+              <div class="pe-section-msg" id="msg-metrics" role="status" aria-live="polite"></div>
+              <button type="submit" class="btn btn-orange" id="save-metrics-btn">Save Academic Metrics</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           3. HERO BUTTONS & WHATSAPP CONTACT (table: public.profiles)
+           ================================================================ -->
+      <section class="pe-section" id="sec-switches" data-collapsible>
+        <button
+          type="button"
+          class="pe-section-header"
+          aria-expanded="true"
+          aria-controls="body-switches"
+        >
+          <div class="pe-section-header-copy">
+            <span class="pe-section-num">03</span>
+            <div>
+              <h2 class="pe-section-title" id="sec-switches-title">Hero Buttons &amp; WhatsApp Contact</h2>
+              <p class="pe-section-summary" id="sec-switches-summary">Display <strong>Researches</strong>, <strong>Software</strong>, or <strong>Both</strong> in your hero (<code>hero_button</code>), and share your WhatsApp number (<code>whatsapp</code>) to enable direct contact.</p>
+            </div>
+          </div>
+          <span class="pe-chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="pe-section-body" id="body-switches">
+          <div class="pe-switches-stack">
+            <!-- 3a. Hero Button Switch (Researches / Software / Both) -->
+            <div class="pe-switch-row" id="sw-hero-row">
+              <div class="pe-switch-info">
+                <div class="pe-switch-title">Hero Action Buttons (<code>profiles.hero_button</code>)</div>
+                <p class="pe-switch-desc">Choose whether your portfolio hero displays <strong>Researches</strong> (<code>1</code>), <strong>Software</strong> (<code>0</code>), or <strong>Both buttons</strong> (<code>2</code>) if you are both a researcher and a developer.</p>
+              </div>
+              <div class="pe-hero-toggle-group" role="radiogroup" aria-label="Hero action buttons">
+                <button
+                  type="button"
+                  id="sw-hero-researches"
+                  class="pe-big-choice is-active"
+                  role="radio"
+                  aria-checked="true"
+                >Researches (1)</button>
+                <button
+                  type="button"
+                  id="sw-hero-software"
+                  class="pe-big-choice"
+                  role="radio"
+                  aria-checked="false"
+                >Software (0)</button>
+                <button
+                  type="button"
+                  id="sw-hero-both"
+                  class="pe-big-choice"
+                  role="radio"
+                  aria-checked="false"
+                >Both (2)</button>
+              </div>
+            </div>
+
+            <!-- 3b. Public WhatsApp Contact Number & Sharing Consent (profiles.whatsapp) -->
+            <div class="pe-switch-row pe-switch-row--stacked" id="sw-whatsapp-row">
+              <div class="pe-wa-head">
+                <div class="pe-switch-info">
+                  <div class="pe-switch-title">Public WhatsApp Contact (<code>profiles.whatsapp</code>)</div>
+                  <p class="pe-switch-desc" id="sw-whatsapp-desc">
+                    Type your WhatsApp number below to add the <strong>WhatsApp</strong> button to your portfolio hero and enable direct messaging. By entering your number here, you agree to share it publicly so visitors can contact you. Leave blank to hide the WhatsApp button.
+                  </p>
+                </div>
+                <span class="pe-wa-status" id="wa-status-badge" data-active="false">Not shared · Button hidden</span>
+              </div>
+
+              <div class="input-group pe-wa-field-group">
+                <div class="pe-label-row">
+                  <label for="f-whatsapp" class="input-label">WhatsApp Number (<code>whatsapp</code>)</label>
+                  <span class="pe-char-count" data-for="f-whatsapp">0 / 24</span>
+                </div>
+                <div class="pe-wa-input-bar">
+                  <input
+                    type="tel"
+                    id="f-whatsapp"
+                    class="input-field pe-num-input"
+                    maxlength="24"
+                    autocomplete="tel"
+                    placeholder="e.g. +8801890803091 or 01890803091"
+                  >
+                  <button type="button" id="clear-whatsapp-btn" class="btn btn-secondary pe-wa-clear-btn" hidden>Remove Number</button>
+                </div>
+                <div class="pe-field-hint" id="hint-whatsapp">Accepts international (+880…) or local 11-digit (01…) numbers. Clearing this field immediately removes the WhatsApp button from your profile.</div>
+                <div class="pe-field-error" id="err-whatsapp" role="alert"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pe-section-footer">
+            <div class="pe-section-msg" id="msg-switches" role="status" aria-live="polite"></div>
+            <button type="button" class="btn btn-orange" id="save-switches-btn">Save Contact Settings</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           4. PROFILE PICTURE / INSTITUTE CREST (Frontend-Only WebP Preview)
+           ================================================================ -->
+      <section class="pe-section" id="sec-photo" data-collapsible>
+        <button
+          type="button"
+          class="pe-section-header"
+          aria-expanded="true"
+          aria-controls="body-photo"
+        >
+          <div class="pe-section-header-copy">
+            <span class="pe-section-num">04</span>
+            <div>
+              <h2 class="pe-section-title" id="sec-photo-title">Profile Picture (<code>profiles.photo</code>)</h2>
+              <p class="pe-section-summary" id="sec-photo-summary">Frontend-only portrait preview and 800px WebP compression prepared for upcoming Cloudflare storage integration.</p>
+            </div>
+          </div>
+          <span class="pe-chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="pe-section-body" id="body-photo">
+          <div id="pe-photo-mock-banner" class="pe-mock-banner">
+            <span class="pe-mock-tag">FRONTEND PREVIEW</span>
+            <span>Portrait uploads will connect to a separate Cloudflare storage bucket. For now, choosing a photo validates, resizes (max 800px), and previews your converted WebP portrait locally in the browser with no backend write.</span>
+          </div>
+
+          <div class="pe-photo-layout">
+            <div class="pe-photo-preview-col">
+              <div class="prof-portrait-stage pe-portrait-stage">
+                <span class="prof-crop-mark prof-crop-tl" aria-hidden="true"></span>
+                <span class="prof-crop-mark prof-crop-bl" aria-hidden="true"></span>
+                <div class="prof-portrait-frame">
+                  <img
+                    id="pe-avatar-img"
+                    class="prof-portrait-img"
+                    alt="Profile portrait preview"
+                    referrerpolicy="no-referrer"
+                    hidden
+                  >
+                  <div id="pe-avatar-fallback" class="prof-portrait-fallback">
+                    <span id="pe-avatar-initials" class="prof-portrait-initials">IL</span>
+                  </div>
+                  <span class="prof-spiral-strip" aria-hidden="true"></span>
+                </div>
+              </div>
+              <div class="pe-photo-key-line">
+                Database key (<code>profiles.photo</code>): <code id="ro-photo-key">—</code>
+              </div>
+            </div>
+
+            <div class="pe-photo-controls-col">
+              <div class="pe-upload-box">
+                <label for="pe-avatar-file" class="input-label">Choose Portrait Image (JPEG, PNG, WebP · Max 2 MB)</label>
+                <input
+                  type="file"
+                  id="pe-avatar-file"
+                  class="pe-file-input"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                >
+                <p class="pe-field-hint">
+                  Automatically scaled so the longest edge is at most <strong>800 px</strong> and encoded to <strong>WebP (0.85 quality)</strong> in your browser. Once Cloudflare storage is connected, uploading will overwrite your stored object key seamlessly.
+                </p>
+
+                <div id="pe-avatar-meta" class="pe-conversion-meta" hidden></div>
+                <div id="err-avatar" class="pe-field-error" role="alert"></div>
+
+                <div class="pe-upload-actions">
+                  <button type="button" id="pe-avatar-upload-btn" class="btn btn-orange" disabled>Apply Frontend Preview</button>
+                  <button type="button" id="pe-avatar-reset-btn" class="btn btn-secondary" hidden>Reset to Saved Portrait</button>
+                </div>
+                <div id="msg-avatar" class="pe-section-msg" role="status" aria-live="polite"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           5. EDUCATION & EXPERIENCES (table: public.profile_cv_entries)
+           ================================================================ -->
+      <section class="pe-section" id="sec-cv" data-collapsible>
+        <button
+          type="button"
+          class="pe-section-header"
+          aria-expanded="true"
+          aria-controls="body-cv"
+        >
+          <div class="pe-section-header-copy">
+            <span class="pe-section-num">05</span>
+            <div>
+              <h2 class="pe-section-title">Portfolio CV Timelines — Education &amp; Experiences</h2>
+              <p class="pe-section-summary">Detailed curriculum vitae timelines stored in <code>public.profile_cv_entries</code>. Reorder, edit, add, or remove entries.</p>
+            </div>
+          </div>
+          <span class="pe-chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="pe-section-body" id="body-cv">
+          <!-- Education Sub-list -->
+          <div class="pe-list-block">
+            <div class="pe-list-head">
+              <div>
+                <h3 class="pe-list-title">Education Timeline</h3>
+                <p class="pe-list-sub"><code>entry_type = 'education'</code> · Ordered by <code>sort_order</code> ascending.</p>
+              </div>
+              <button type="button" id="add-education-btn" class="btn btn-orange pe-compact-btn">+ Add Education</button>
+            </div>
+            <div id="list-education" class="pe-record-list" aria-live="polite"></div>
+          </div>
+
+          <div class="pe-divider pe-list-divider"></div>
+
+          <!-- Experiences Sub-list -->
+          <div class="pe-list-block">
+            <div class="pe-list-head">
+              <div>
+                <h3 class="pe-list-title">Experiences Timeline</h3>
+                <p class="pe-list-sub"><code>entry_type = 'experience'</code> · Ordered by <code>sort_order</code> ascending.</p>
+              </div>
+              <button type="button" id="add-experience-btn" class="btn btn-orange pe-compact-btn">+ Add Experience</button>
+            </div>
+            <div id="list-experience" class="pe-record-list" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           6. SKILLS & CO-CURRICULARS (table: public.profile_custom_cards)
+           ================================================================ -->
+      <section class="pe-section" id="sec-cards" data-collapsible>
+        <button
+          type="button"
+          class="pe-section-header"
+          aria-expanded="true"
+          aria-controls="body-cards"
+        >
+          <div class="pe-section-header-copy">
+            <span class="pe-section-num">06</span>
+            <div>
+              <h2 class="pe-section-title">Portfolio Cards — Skills, Badges &amp; Co-Curriculars</h2>
+              <p class="pe-section-summary">Stacked portfolio cards stored in <code>public.profile_custom_cards</code> with optional external verification links.</p>
+            </div>
+          </div>
+          <span class="pe-chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="pe-section-body" id="body-cards">
+          <!-- Skills Deck -->
+          <div class="pe-list-block">
+            <div class="pe-list-head">
+              <div>
+                <h3 class="pe-list-title">Skills, Badges &amp; Certifications Cards</h3>
+                <p class="pe-list-sub"><code>deck_type = 'skills'</code> · Appears in Section 02 of your public portfolio.</p>
+              </div>
+              <button type="button" id="add-skills-btn" class="btn btn-orange pe-compact-btn">+ Add Skill / Badge</button>
+            </div>
+            <div id="list-skills" class="pe-record-list" aria-live="polite"></div>
+          </div>
+
+          <div class="pe-divider pe-list-divider"></div>
+
+          <!-- Co-Curriculars Deck -->
+          <div class="pe-list-block">
+            <div class="pe-list-head">
+              <div>
+                <h3 class="pe-list-title">Co-Curriculars &amp; Leadership Cards</h3>
+                <p class="pe-list-sub"><code>deck_type = 'cocurriculars'</code> · Appears in Section 06 of your public portfolio.</p>
+              </div>
+              <button type="button" id="add-cocurriculars-btn" class="btn btn-orange pe-compact-btn">+ Add Co-Curricular</button>
+            </div>
+            <div id="list-cocurriculars" class="pe-record-list" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           7. RESEARCHES ARCHIVE (table: public.researches where uid @> [cid])
+           ================================================================ -->
+      <section class="pe-section" id="sec-researches" data-collapsible>
+        <button
+          type="button"
+          class="pe-section-header"
+          aria-expanded="true"
+          aria-controls="body-researches"
+        >
+          <div class="pe-section-header-copy">
+            <span class="pe-section-num">07</span>
+            <div>
+              <h2 class="pe-section-title">Portfolio Researches &amp; Journals Archive</h2>
+              <p class="pe-section-summary">Full authored papers and preprints in <code>public.researches</code> where <code>uid</code> contains your account ID.</p>
+            </div>
+          </div>
+          <span class="pe-chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="pe-section-body" id="body-researches">
+          <div class="pe-list-head">
+            <div>
+              <h3 class="pe-list-title">Your Indexed Research Papers</h3>
+              <p class="pe-list-sub">New entries assign <code>uid = [your cid]</code> and rely on the database default for <code>ilrid</code>.</p>
+            </div>
+            <button type="button" id="add-research-btn" class="btn btn-orange pe-compact-btn">+ Add Research</button>
+          </div>
+          <div id="list-researches" class="pe-record-list" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           8. SOFTWARES REGISTRY (table: public.software where uid @> [cid])
+           ================================================================ -->
+      <section class="pe-section" id="sec-softwares" data-collapsible>
+        <button
+          type="button"
+          class="pe-section-header"
+          aria-expanded="true"
+          aria-controls="body-softwares"
+        >
+          <div class="pe-section-header-copy">
+            <span class="pe-section-num">08</span>
+            <div>
+              <h2 class="pe-section-title">Portfolio Softwares Registry</h2>
+              <p class="pe-section-summary">Full published tools, simulations, and open-source repositories in <code>public.software</code> where <code>uid</code> contains your account ID.</p>
+            </div>
+          </div>
+          <span class="pe-chevron" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="pe-section-body" id="body-softwares">
+          <div class="pe-list-head">
+            <div>
+              <h3 class="pe-list-title">Your Published Software Builds</h3>
+              <p class="pe-list-sub">New entries assign <code>uid = [your cid]</code> and rely on the database default for <code>ilsid</code>.</p>
+            </div>
+            <button type="button" id="add-software-btn" class="btn btn-orange pe-compact-btn">+ Publish Software</button>
+          </div>
+          <div id="list-softwares" class="pe-record-list" aria-live="polite"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-bot-bar pe-footer-bar">
+        <div>© 2026 The Iteration Lab · Member Portfolio Editor</div>
+        <div class="pe-footer-links">
+          <a href="/" class="footer-link-item">Home</a>
+          <a href="/researches/" class="footer-link-item">Researches</a>
+          <a href="/softwares/" class="footer-link-item">Softwares</a>
+          <a href="/teams/" class="footer-link-item">Groups &amp; Teams</a>
+          <a href="/login.html" class="footer-link-item">Account</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- REUSABLE ITEM ADD / EDIT MODAL (.modal-backdrop / .modal-dialog) -->
+  <div
+    class="modal-backdrop"
+    id="pe-editor-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="pe-editor-modal-title"
+  >
+    <div class="modal-dialog pe-modal-dialog">
+      <div class="modal-head">
+        <h3 id="pe-editor-modal-title" class="pe-modal-title">Edit Record</h3>
+        <button type="button" id="pe-editor-modal-close" class="pe-modal-close" aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-body" id="pe-editor-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- ACCESSIBLE CONFIRM DELETE DIALOG (.modal-backdrop / .modal-dialog) -->
+  <div
+    class="modal-backdrop"
+    id="pe-confirm-modal"
+    role="alertdialog"
+    aria-modal="true"
+    aria-labelledby="pe-confirm-title"
+    aria-describedby="pe-confirm-desc"
+  >
+    <div class="modal-dialog pe-confirm-dialog">
+      <div class="modal-head">
+        <h3 id="pe-confirm-title" class="pe-modal-title">Confirm Deletion</h3>
+        <button type="button" id="pe-confirm-close" class="pe-modal-close" aria-label="Cancel deletion">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="pe-confirm-desc" class="pe-confirm-text">Are you sure you want to permanently delete this item?</p>
+        <div class="pe-modal-actions">
+          <button type="button" id="pe-confirm-cancel" class="btn btn-secondary">Cancel</button>
+          <button type="button" id="pe-confirm-accept" class="btn pe-btn-danger">Delete Permanently</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/assets/js/profile-edit.js"></script>
+</body>
+</html>

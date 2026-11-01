@@ -31,8 +31,8 @@ const DIRECTORY_CONFIGS = {
     table: 'leaders',
     idColumn: 'cid',
     idIsUuid: true,
-    listSelect: 'cid,sort_order,display_name,role,quote,bio,responsibilities,profile_i,p_link,whatsapp,profiles(name,photo)',
-    detailSelect: 'cid,sort_order,display_name,role,quote,bio,responsibilities,profile_i,p_link,whatsapp,s_invite_count,c_invite_count,t_invite_count,r_published,s_published,skill_score,profiles(name,photo)',
+    listSelect: 'cid,sort_order,display_name,role,quote,bio,responsibilities,profile_i,p_link,whatsapp,profiles(type,slug,name,photo)',
+    detailSelect: 'cid,sort_order,display_name,role,quote,bio,responsibilities,profile_i,p_link,whatsapp,s_invite_count,c_invite_count,t_invite_count,r_published,s_published,skill_score,profiles(type,slug,name,photo)',
     order: 'sort_order.asc',
     singularLabel: 'leader',
     pluralLabel: 'leaders',
@@ -45,8 +45,8 @@ const DIRECTORY_CONFIGS = {
     table: 'teachers',
     idColumn: 'cid',
     idIsUuid: true,
-    listSelect: 'cid,eiin,profiles(name,photo)',
-    detailSelect: 'cid,eiin,profiles(name,photo,certificates,softwares,researches,others)',
+    listSelect: '*,profiles(type,slug,name,photo)',
+    detailSelect: '*,profiles(type,slug,name,photo,certificates,softwares,researches,others)',
     order: 'created_at.desc',
     singularLabel: 'teacher',
     pluralLabel: 'teachers',
@@ -63,8 +63,8 @@ const DIRECTORY_CONFIGS = {
     table: 'students',
     idColumn: 'cid',
     idIsUuid: true,
-    listSelect: 'cid,eiin,profiles(name,photo)',
-    detailSelect: 'cid,eiin,profiles(name,photo,certificates,softwares,researches,others)',
+    listSelect: '*,profiles(type,slug,name,photo)',
+    detailSelect: '*,profiles(type,slug,name,photo,certificates,softwares,researches,others)',
     order: 'created_at.desc',
     singularLabel: 'student',
     pluralLabel: 'students',
@@ -81,8 +81,8 @@ const DIRECTORY_CONFIGS = {
     table: 'institutes',
     idColumn: 'cid',
     idIsUuid: true,
-    listSelect: 'cid,eiin,profiles(name,photo)',
-    detailSelect: 'cid,eiin,profiles(name,photo,certificates,softwares,researches,others)',
+    listSelect: '*,profiles(type,slug,name,photo)',
+    detailSelect: '*,profiles(type,slug,name,photo,certificates,softwares,researches,others)',
     order: 'created_at.desc',
     singularLabel: 'institute',
     pluralLabel: 'institutes',
@@ -99,8 +99,9 @@ const DIRECTORY_CONFIGS = {
     table: 'researches',
     idColumn: 'ilrid',
     idIsUuid: false,
-    listSelect: 'ilrid,uid,title,abstract,category,keywords,paper_url,cover_url,publish_date,likes,comments,reviewers,is_sample',
-    detailSelect: 'ilrid,uid,title,abstract,category,keywords,paper_url,cover_url,publish_date,likes,comments,reviewers,is_sample',
+    cleanDetailRoute: true,
+    listSelect: '*',
+    detailSelect: '*',
     order: 'publish_date.desc.nullslast',
     singularLabel: 'research paper',
     pluralLabel: 'research papers',
@@ -118,8 +119,9 @@ const DIRECTORY_CONFIGS = {
     table: 'software',
     idColumn: 'ilsid',
     idIsUuid: false,
-    listSelect: 'ilsid,uid,name,tagline,description,category,tech,url,repo_url,image_url,status,publish_date,likes,comments,reviewers,is_sample',
-    detailSelect: 'ilsid,uid,name,tagline,description,category,tech,url,repo_url,image_url,status,publish_date,likes,comments,reviewers,is_sample',
+    cleanDetailRoute: true,
+    listSelect: '*',
+    detailSelect: '*',
     order: 'publish_date.desc.nullslast',
     singularLabel: 'software build',
     pluralLabel: 'software builds',
@@ -417,13 +419,15 @@ async function fetchProfilesMap(rawIds) {
 
   const inClause = validUuids.map(u => `"${u}"`).join(',');
   const { rows } = await sbFetch(
-    `profiles?select=cid,name,photo&cid=in.(${encodeURIComponent(inClause)})`
+    `profiles?select=cid,type,slug,name,photo&cid=in.(${encodeURIComponent(inClause)})`
   );
 
   rows.forEach(r => {
     if (r.cid) {
       map.set(String(r.cid), {
         cid: String(r.cid),
+        type: cleanText(r.type).toUpperCase() || 'S',
+        slug: cleanText(r.slug),
         name: cleanText(r.name) || 'Contributor',
         photo: cleanText(r.photo)
       });
@@ -437,7 +441,7 @@ function resolvePerson(profilesMap, id) {
   if (key && profilesMap.has(key)) {
     return profilesMap.get(key);
   }
-  return { cid: key, name: 'Contributor', photo: '' };
+  return { cid: key, type: 'S', slug: '', name: 'Contributor', photo: '' };
 }
 
 async function fetchInstitutesMap(eiinValues) {
@@ -525,7 +529,7 @@ async function fetchDirectoryListPage(dirKey, cfg, { page, searchBy, searchQuery
     }
     const term = sanitizeIlikeTerm(activeQuery);
     if (!term) return { rows: [], total: 0 };
-    const innerSelect = 'cid,eiin,profiles!inner(name,photo)';
+    const innerSelect = '*,profiles!inner(type,slug,name,photo)';
     const query = `${cfg.table}?select=${innerSelect}&profiles.name=ilike.*${encodeURIComponent(term)}*&order=${cfg.order}&limit=${cfg.pageSize}&offset=${offset}`;
     return sbFetch(query, { countExact: true });
   }
@@ -733,13 +737,87 @@ function renderErrorState(container, messageText, onRetry) {
   container.appendChild(box);
 }
 
-function resolveMemberPortfolioHref(cid, customLink = '') {
+function normalizeAccountTypeCode(val, fallback = 'S') {
+  const t = cleanText(val).toUpperCase();
+  if (t === 'T' || t === 'TEACHER') return 'T';
+  if (t === 'I' || t === 'INSTITUTE') return 'I';
+  if (t === 'R' || t === 'READER') return 'R';
+  if (t === 'S' || t === 'STUDENT') return 'S';
+  return fallback;
+}
+
+function resolveMemberPortfolioHref(cid, customLink = '', prof = null, defaultType = 'S') {
   const explicit = cleanText(customLink);
   if (explicit) return explicit;
   const cleanCid = cleanText(cid);
-  if (!cleanCid) return '';
   if (cleanCid === FOUNDER_LEADER_CID) return FOUNDER_PROFILE_URL;
+  const slug = prof ? cleanText(prof.slug) : '';
+  const acctType = normalizeAccountTypeCode(prof ? prof.type : '', defaultType);
+  if (slug) {
+    return `/profile/${acctType}/${encodeURIComponent(slug)}`;
+  }
+  if (!cleanCid) return '';
   return `/profile/?cid=${encodeURIComponent(cleanCid)}`;
+}
+
+function createInlineAuthorByline(ids, profilesMap, labelPrefix = 'Authors:', className = 'dir-author-byline-inline') {
+  const wrap = el('div', className);
+  if (labelPrefix) {
+    wrap.appendChild(el('span', 'dir-author-byline-label', `${labelPrefix} `));
+  }
+  if (!Array.isArray(ids) || ids.length === 0) {
+    wrap.appendChild(el('span', '', 'Contributor'));
+    return wrap;
+  }
+  ids.forEach((id, index) => {
+    if (index > 0) {
+      wrap.appendChild(document.createTextNode(', '));
+    }
+    const person = resolvePerson(profilesMap, id);
+    const cleanId = cleanText(id);
+    const href = UUID_RE.test(cleanId)
+      ? resolveMemberPortfolioHref(cleanId, '', person, person.type || 'S')
+      : '';
+    if (href) {
+      const link = el('a', 'dir-author-inline-link', person.name);
+      link.href = href;
+      wrap.appendChild(link);
+    } else {
+      wrap.appendChild(el('span', '', person.name));
+    }
+  });
+  return wrap;
+}
+
+function appendStructuredProse(parent, rawText) {
+  const text = cleanText(rawText);
+  if (!text) return;
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map(p => p.trim())
+    .filter(Boolean);
+  if (paragraphs.length <= 1) {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length > 1 && lines.every(l => /^[-•*]|^\d+[.)]\s/.test(l))) {
+      const ul = el('ul', 'dir-public-list');
+      lines.forEach(line => {
+        ul.appendChild(el('li', '', line.replace(/^([-•*]|\d+[.)])\s*/, '').trim()));
+      });
+      parent.appendChild(ul);
+      return;
+    }
+    const p = el('p', 'dir-full-prose', text);
+    p.style.whiteSpace = 'pre-line';
+    parent.appendChild(p);
+    return;
+  }
+  const stack = el('div', 'dir-prose-stack');
+  paragraphs.forEach(para => {
+    const p = el('p', 'dir-full-prose', para);
+    p.style.whiteSpace = 'pre-line';
+    stack.appendChild(p);
+  });
+  parent.appendChild(stack);
 }
 
 /* ==========================================================================
@@ -766,7 +844,7 @@ function renderLeadersList(container, rows) {
       : cid
         ? `/leaders/?id=${encodeURIComponent(cid)}`
         : '';
-    const portfolioHref = resolveMemberPortfolioHref(cid, row.p_link);
+    const portfolioHref = resolveMemberPortfolioHref(cid, row.p_link, prof, 'S');
 
     const card = el('article', `dir-leader-card${leaderDetailHref ? ' dir-leader-card--clickable' : ''}`);
     card.setAttribute('aria-label', role ? `${name}, ${role}` : name);
@@ -849,6 +927,7 @@ function renderLeadersList(container, rows) {
 
 function renderMembersCompactList(container, rows, institutesMap, cfg, defaultLabel) {
   const grid = el('div', 'dir-compact-grid');
+  const defaultType = cfg.table === 'teachers' ? 'T' : 'S';
 
   rows.forEach(row => {
     const prof = extractProfile(row.profiles);
@@ -856,14 +935,23 @@ function renderMembersCompactList(container, rows, institutesMap, cfg, defaultLa
     const photo = prof ? cleanText(prof.photo) : '';
     const instText = resolveInstitutionText(row.eiin, institutesMap);
     const cid = cleanText(row.cid);
-    const portfolioHref = resolveMemberPortfolioHref(cid);
+    const portfolioHref = resolveMemberPortfolioHref(cid, '', prof, defaultType);
 
-    const card = el('article', 'dir-compact-card');
+    const card = el('article', `dir-compact-card${portfolioHref ? ' dir-card--clickable' : ''}`);
+    if (portfolioHref) {
+      card.setAttribute('role', 'link');
+      card.setAttribute('tabindex', '0');
+      card.dataset.dirCardHref = portfolioHref;
+    }
     const top = el('div', 'dir-compact-top');
     top.appendChild(createAvatar(name, photo, '', cfg.imageDir, true));
 
     const info = el('div', 'dir-compact-info');
     info.appendChild(el('h2', 'dir-compact-name', name));
+    const designation = cleanText(row.designation);
+    if (designation) {
+      info.appendChild(el('div', 'dir-compact-sub', designation));
+    }
     if (instText) {
       info.appendChild(el('div', 'dir-compact-sub', instText));
     }
@@ -891,8 +979,14 @@ function renderInstitutesList(container, rows) {
     const photo = prof ? cleanText(prof.photo) : '';
     const eiin = cleanText(row.eiin);
     const cid = cleanText(row.cid);
+    const instProfileHref = resolveMemberPortfolioHref(cid, '', prof, 'I');
 
-    const card = el('article', 'dir-compact-card');
+    const card = el('article', `dir-compact-card${instProfileHref ? ' dir-card--clickable' : ''}`);
+    if (instProfileHref) {
+      card.setAttribute('role', 'link');
+      card.setAttribute('tabindex', '0');
+      card.dataset.dirCardHref = instProfileHref;
+    }
     const top = el('div', 'dir-compact-top');
     top.appendChild(createAvatar(name, photo, '', IMAGE_DIRS.institutes, true));
 
@@ -901,13 +995,16 @@ function renderInstitutesList(container, rows) {
     if (eiin) {
       info.appendChild(el('div', 'dir-compact-eiin', `EIIN ${eiin}`));
     }
+    const addr = cleanText(row.address);
+    if (addr) {
+      info.appendChild(el('div', 'dir-compact-sub', addr));
+    }
     top.appendChild(info);
     card.appendChild(top);
 
-    if (cid) {
+    if (instProfileHref) {
       const btn = el('a', 'dir-btn dir-btn-outline', 'View profile');
-      btn.href = `/institutes/?id=${encodeURIComponent(cid)}`;
-      btn.dataset.dirNav = 'true';
+      btn.href = instProfileHref;
       card.appendChild(btn);
     }
 
@@ -953,8 +1050,8 @@ function renderResearchesList(container, rows, profilesMap) {
 
   rows.forEach(row => {
     const ilrid = cleanText(row.ilrid);
-    const title = cleanText(row.title) || 'Untitled Research';
-    const abstract = cleanText(row.abstract);
+    const title = cleanText(row.title || row.name) || 'Untitled Research';
+    const abstract = cleanText(row.abstract || row.details);
     const category = cleanText(row.category);
     const keywords = parseStringArray(row.keywords);
     const authorIds = normalizeUuidList(row.uid);
@@ -963,8 +1060,14 @@ function renderResearchesList(container, rows, profilesMap) {
     const likes = Number(row.likes ?? 0);
     const comments = Number(row.comments ?? 0);
     const paperUrl = cleanText(row.paper_url);
+    const detailHref = ilrid ? `/researches/${encodeURIComponent(ilrid)}` : '';
 
-    const card = el('article', 'dir-research-card');
+    const card = el('article', `dir-research-card${detailHref ? ' dir-card--clickable' : ''}`);
+    if (detailHref) {
+      card.setAttribute('role', 'link');
+      card.setAttribute('tabindex', '0');
+      card.dataset.dirCardHref = detailHref;
+    }
     card.appendChild(createResearchCover(ilrid, category, title, row.cover_url, false));
 
     const body = el('div', 'dir-research-body');
@@ -988,10 +1091,7 @@ function renderResearchesList(container, rows, profilesMap) {
     }
 
     const statsBox = el('div', 'dir-meta-stats');
-    const authorNames = authorIds.length > 0
-      ? authorIds.map(id => resolvePerson(profilesMap, id).name).join(', ')
-      : 'Contributor';
-    statsBox.appendChild(el('div', '', `Authors: ${authorNames}`));
+    statsBox.appendChild(createInlineAuthorByline(authorIds, profilesMap, 'Authors:'));
 
     const subStats = el('div', 'dir-stat-inline');
     const pieces = [`Reviewed by ${reviewerIds.length}`];
@@ -1003,18 +1103,18 @@ function renderResearchesList(container, rows, profilesMap) {
     body.appendChild(statsBox);
 
     const actions = el('div', 'dir-actions-row');
+    if (detailHref) {
+      const detBtn = el('a', 'dir-btn dir-btn-primary', 'View in details →');
+      detBtn.href = detailHref;
+      detBtn.dataset.dirNav = 'true';
+      actions.appendChild(detBtn);
+    }
     if (isHttpUrl(paperUrl)) {
-      const readBtn = el('a', 'dir-btn dir-btn-primary', 'Read paper');
+      const readBtn = el('a', 'dir-btn dir-btn-outline', 'PDF ↗');
       readBtn.href = paperUrl;
       readBtn.target = '_blank';
       readBtn.rel = 'noopener noreferrer';
       actions.appendChild(readBtn);
-    }
-    if (ilrid) {
-      const detBtn = el('a', 'dir-btn dir-btn-outline', 'Details');
-      detBtn.href = `/researches/?id=${encodeURIComponent(ilrid)}`;
-      detBtn.dataset.dirNav = 'true';
-      actions.appendChild(detBtn);
     }
     body.appendChild(actions);
 
@@ -1060,9 +1160,9 @@ function renderSoftwaresList(container, rows, profilesMap) {
 
   rows.forEach((row, idx) => {
     const ilsid = cleanText(row.ilsid);
-    const name = cleanText(row.name) || 'Untitled Software';
+    const name = cleanText(row.name || row.title) || 'Untitled Software';
     const tagline = cleanText(row.tagline);
-    const desc = cleanText(row.description);
+    const desc = cleanText(row.description || row.details);
     const category = cleanText(row.category);
     const status = cleanText(row.status);
     const tech = parseStringArray(row.tech);
@@ -1071,8 +1171,17 @@ function renderSoftwaresList(container, rows, profilesMap) {
     const pubDate = formatDate(row.publish_date);
     const openUrl = cleanText(row.url);
     const repoUrl = cleanText(row.repo_url);
+    const detailHref = ilsid ? `/softwares/${encodeURIComponent(ilsid)}` : '';
 
-    const sec = el('article', `dir-software-section${idx % 2 === 1 ? ' is-alt' : ''}`);
+    const sec = el(
+      'article',
+      `dir-software-section${idx % 2 === 1 ? ' is-alt' : ''}${detailHref ? ' dir-card--clickable' : ''}`
+    );
+    if (detailHref) {
+      sec.setAttribute('role', 'link');
+      sec.setAttribute('tabindex', '0');
+      sec.dataset.dirCardHref = detailHref;
+    }
     sec.appendChild(createSoftwareMedia(ilsid, name, category, row.image_url, false));
 
     const content = el('div', 'dir-software-content');
@@ -1095,10 +1204,7 @@ function renderSoftwaresList(container, rows, profilesMap) {
     }
 
     const statsBox = el('div', 'dir-meta-stats');
-    const devNames = devIds.length > 0
-      ? devIds.map(id => resolvePerson(profilesMap, id).name).join(', ')
-      : 'Contributor';
-    statsBox.appendChild(el('div', '', `Developers: ${devNames}`));
+    statsBox.appendChild(createInlineAuthorByline(devIds, profilesMap, 'Developers:'));
 
     const subPieces = [`Reviewed by ${reviewerIds.length}`];
     if (pubDate) subPieces.push(pubDate);
@@ -1114,25 +1220,25 @@ function renderSoftwaresList(container, rows, profilesMap) {
     content.appendChild(statsBox);
 
     const actions = el('div', 'dir-actions-row');
+    if (detailHref) {
+      const detBtn = el('a', 'dir-btn dir-btn-primary', 'View in details →');
+      detBtn.href = detailHref;
+      detBtn.dataset.dirNav = 'true';
+      actions.appendChild(detBtn);
+    }
     if (isHttpUrl(openUrl)) {
-      const openBtn = el('a', 'dir-btn dir-btn-primary', 'Open');
+      const openBtn = el('a', 'dir-btn dir-btn-outline', 'Open ↗');
       openBtn.href = openUrl;
       openBtn.target = '_blank';
       openBtn.rel = 'noopener noreferrer';
       actions.appendChild(openBtn);
     }
     if (isHttpUrl(repoUrl)) {
-      const srcBtn = el('a', 'dir-btn dir-btn-outline', 'Source');
+      const srcBtn = el('a', 'dir-btn dir-btn-outline', 'Source ↗');
       srcBtn.href = repoUrl;
       srcBtn.target = '_blank';
       srcBtn.rel = 'noopener noreferrer';
       actions.appendChild(srcBtn);
-    }
-    if (ilsid) {
-      const detBtn = el('a', 'dir-btn dir-btn-outline', 'Details');
-      detBtn.href = `/softwares/?id=${encodeURIComponent(ilsid)}`;
-      detBtn.dataset.dirNav = 'true';
-      actions.appendChild(detBtn);
     }
     if (actions.childNodes.length > 0) content.appendChild(actions);
 
@@ -1259,7 +1365,9 @@ function createPeoplePillsSection(headingText, ids, profilesMap) {
   ids.forEach(id => {
     const p = resolvePerson(profilesMap, id);
     const cleanId = cleanText(id);
-    const portfolioHref = UUID_RE.test(cleanId) ? resolveMemberPortfolioHref(cleanId) : '';
+    const portfolioHref = UUID_RE.test(cleanId)
+      ? resolveMemberPortfolioHref(cleanId, '', p, p.type || 'S')
+      : '';
     const pill = portfolioHref
       ? el('a', 'dir-person-pill dir-person-pill--link')
       : el('div', 'dir-person-pill');
@@ -1385,7 +1493,7 @@ function renderLeaderDetail(container, row, cfg) {
     headCol.appendChild(qEl);
   }
   const cid = cleanText(row.cid);
-  const customProfileUrl = resolveMemberPortfolioHref(cid, row.p_link);
+  const customProfileUrl = resolveMemberPortfolioHref(cid, row.p_link, prof, 'S');
 
   if (customProfileUrl || whatsappHref) {
     const actions = el('div', 'dir-actions-row');
@@ -1460,6 +1568,9 @@ function renderProfileEntityDetail(container, row, cfg, institutionText) {
   const name = (prof ? cleanText(prof.name) : '') || cfg.singularLabel;
   const photo = prof ? cleanText(prof.photo) : '';
   const eiin = cleanText(row.eiin);
+  const memberCid = cleanText(row.cid);
+  const defaultType = cfg.table === 'institutes' ? 'I' : cfg.table === 'teachers' ? 'T' : 'S';
+  const portfolioHref = resolveMemberPortfolioHref(memberCid, '', prof, defaultType);
 
   const wrap = document.createDocumentFragment();
   wrap.appendChild(createBackLink(cfg.basePath, cfg.pluralLabel));
@@ -1482,12 +1593,18 @@ function renderProfileEntityDetail(container, row, cfg, institutionText) {
       eiinEl.style.marginTop = '8px';
       info.appendChild(eiinEl);
     }
+    if (portfolioHref) {
+      const actions = el('div', 'dir-actions-row');
+      actions.style.marginTop = '14px';
+      const profBtn = el('a', 'dir-btn dir-btn-primary', 'Open Institute Profile ↗');
+      profBtn.href = portfolioHref;
+      actions.appendChild(profBtn);
+      info.appendChild(actions);
+    }
   } else {
     if (institutionText) {
       info.appendChild(el('p', 'dir-subtitle', institutionText));
     }
-    const memberCid = cleanText(row.cid);
-    const portfolioHref = resolveMemberPortfolioHref(memberCid);
     if (portfolioHref) {
       const actions = el('div', 'dir-actions-row');
       actions.style.marginTop = '14px';
@@ -1509,8 +1626,15 @@ function renderProfileEntityDetail(container, row, cfg, institutionText) {
 
 function renderResearchDetail(container, row, cfg, profilesMap) {
   const ilrid = cleanText(row.ilrid);
-  const title = cleanText(row.title) || 'Untitled Research';
+  const title = cleanText(row.title || row.name) || 'Untitled Research';
   const abstract = cleanText(row.abstract);
+  const details = cleanText(row.details);
+  const questionSolved = cleanText(row.question_solved);
+  const purpose = cleanText(row.purpose);
+  const goals = cleanText(row.goals);
+  const inspiration = cleanText(row.inspiration);
+  const workProcesses = cleanText(row.work_processes || row.work_process);
+  const effects = cleanText(row.effects);
   const category = cleanText(row.category);
   const keywords = parseStringArray(row.keywords);
   const authorIds = normalizeUuidList(row.uid);
@@ -1520,11 +1644,12 @@ function renderResearchDetail(container, row, cfg, profilesMap) {
   const comments = Number(row.comments ?? 0);
   const paperUrl = cleanText(row.paper_url);
 
+  document.title = `${title} · Research Archive · The Iteration Lab`;
+
   const wrap = document.createDocumentFragment();
   wrap.appendChild(createBackLink(cfg.basePath, cfg.pluralLabel));
 
-  const card = el('article', 'dir-detail-card');
-  card.appendChild(createResearchCover(ilrid, category, title, row.cover_url, true));
+  const card = el('article', 'dir-detail-card dir-monograph-card');
 
   const metaRow = el('div', 'dir-meta-row');
   if (ilrid) metaRow.appendChild(el('span', 'dir-chip dir-chip-code', ilrid));
@@ -1534,27 +1659,60 @@ function renderResearchDetail(container, row, cfg, profilesMap) {
 
   card.appendChild(el('h1', 'dir-title', title));
 
+  // Prominent Author Byline with embedded profile links
+  const bylineBar = el('div', 'dir-author-byline-bar');
+  bylineBar.appendChild(createInlineAuthorByline(authorIds, profilesMap, 'By', 'dir-author-byline-featured'));
+
   const statPieces = [`Reviewed by ${reviewerIds.length}`];
   if (pubDate) statPieces.push(`Published ${pubDate}`);
   statPieces.push(`${likes} ${likes === 1 ? 'like' : 'likes'}`);
   statPieces.push(`${comments} ${comments === 1 ? 'comment' : 'comments'}`);
-  card.appendChild(el('div', 'dir-stat-inline', statPieces.join(' · ')));
+  bylineBar.appendChild(el('div', 'dir-stat-inline', statPieces.join(' · ')));
+  card.appendChild(bylineBar);
 
-  if (isHttpUrl(paperUrl)) {
-    const actions = el('div', 'dir-actions-row');
-    const readBtn = el('a', 'dir-btn dir-btn-primary', 'Read paper');
-    readBtn.href = paperUrl;
-    readBtn.target = '_blank';
-    readBtn.rel = 'noopener noreferrer';
-    actions.appendChild(readBtn);
-    card.appendChild(actions);
+  card.appendChild(createResearchCover(ilrid, category, title, row.cover_url, true));
+
+  if (questionSolved) {
+    const qSec = el('div', 'dir-detail-section dir-question-callout');
+    qSec.appendChild(el('div', 'dir-detail-heading', 'Core Research Question Addressed'));
+    qSec.appendChild(el('p', 'dir-question-callout-text', questionSolved));
+    card.appendChild(qSec);
   }
 
-  if (abstract) {
+  if (abstract && details && abstract !== details) {
     const absSec = el('div', 'dir-detail-section');
     absSec.appendChild(el('div', 'dir-detail-heading', 'Abstract'));
-    absSec.appendChild(el('p', 'dir-full-prose', abstract));
+    appendStructuredProse(absSec, abstract);
     card.appendChild(absSec);
+
+    const detSec = el('div', 'dir-detail-section');
+    detSec.appendChild(el('div', 'dir-detail-heading', 'Details & Exposition'));
+    appendStructuredProse(detSec, details);
+    card.appendChild(detSec);
+  } else if (details || abstract) {
+    const detSec = el('div', 'dir-detail-section');
+    detSec.appendChild(el('div', 'dir-detail-heading', details ? 'Details' : 'Abstract & Details'));
+    appendStructuredProse(detSec, details || abstract);
+    card.appendChild(detSec);
+  }
+
+  const dossierFields = [
+    { label: 'Purpose', value: purpose },
+    { label: 'Goals', value: goals },
+    { label: 'Inspiration', value: inspiration },
+    { label: 'Work Processes & Methodology', value: workProcesses },
+    { label: 'Effects & Impact', value: effects }
+  ].filter(f => Boolean(f.value));
+
+  if (dossierFields.length > 0) {
+    const dossierGrid = el('div', 'dir-dossier-grid');
+    dossierFields.forEach(({ label, value }) => {
+      const block = el('section', 'dir-dossier-block');
+      block.appendChild(el('h2', 'dir-detail-heading', label));
+      appendStructuredProse(block, value);
+      dossierGrid.appendChild(block);
+    });
+    card.appendChild(dossierGrid);
   }
 
   if (keywords.length > 0) {
@@ -1570,8 +1728,34 @@ function renderResearchDetail(container, row, cfg, profilesMap) {
     card.appendChild(createPeoplePillsSection('Authors', authorIds, profilesMap));
   }
   if (reviewerIds.length > 0) {
-    card.appendChild(createPeoplePillsSection('Reviewers', reviewerIds, profilesMap));
+    card.appendChild(createPeoplePillsSection('Peer Reviewers', reviewerIds, profilesMap));
   }
+
+  // End-of-page PDF Action Callout
+  const endBar = el('div', 'dir-end-cta-bar');
+  const endCopy = el('div', 'dir-end-cta-copy');
+  endCopy.appendChild(el('div', 'dir-end-cta-kicker', ilrid ? `Full Manuscript · ${ilrid}` : 'Full Manuscript'));
+  endCopy.appendChild(
+    el(
+      'div',
+      'dir-end-cta-title',
+      isHttpUrl(paperUrl)
+        ? 'Read the complete published paper or journal PDF.'
+        : 'The full PDF manuscript link has not been uploaded for this record yet.'
+    )
+  );
+  endBar.appendChild(endCopy);
+
+  if (isHttpUrl(paperUrl)) {
+    const endActions = el('div', 'dir-end-cta-actions');
+    const pdfBtn = el('a', 'dir-btn dir-btn-primary dir-end-cta-btn', 'View Full Paper (PDF) ↗');
+    pdfBtn.href = paperUrl;
+    pdfBtn.target = '_blank';
+    pdfBtn.rel = 'noopener noreferrer';
+    endActions.appendChild(pdfBtn);
+    endBar.appendChild(endActions);
+  }
+  card.appendChild(endBar);
 
   wrap.appendChild(card);
   container.replaceChildren(wrap);
@@ -1579,9 +1763,15 @@ function renderResearchDetail(container, row, cfg, profilesMap) {
 
 function renderSoftwareDetail(container, row, cfg, profilesMap) {
   const ilsid = cleanText(row.ilsid);
-  const name = cleanText(row.name) || 'Untitled Software';
+  const name = cleanText(row.name || row.title) || 'Untitled Software';
   const tagline = cleanText(row.tagline);
   const desc = cleanText(row.description);
+  const details = cleanText(row.details);
+  const purpose = cleanText(row.purpose);
+  const goals = cleanText(row.goals);
+  const inspiration = cleanText(row.inspiration);
+  const workProcesses = cleanText(row.work_processes || row.work_process);
+  const effects = cleanText(row.effects);
   const category = cleanText(row.category);
   const status = cleanText(row.status);
   const tech = parseStringArray(row.tech);
@@ -1591,11 +1781,12 @@ function renderSoftwareDetail(container, row, cfg, profilesMap) {
   const openUrl = cleanText(row.url);
   const repoUrl = cleanText(row.repo_url);
 
+  document.title = `${name} · Software Registry · The Iteration Lab`;
+
   const wrap = document.createDocumentFragment();
   wrap.appendChild(createBackLink(cfg.basePath, cfg.pluralLabel));
 
-  const card = el('article', 'dir-detail-card');
-  card.appendChild(createSoftwareMedia(ilsid, name, category, row.image_url, true));
+  const card = el('article', 'dir-detail-card dir-monograph-card');
 
   const metaRow = el('div', 'dir-meta-row');
   if (ilsid) metaRow.appendChild(el('span', 'dir-chip dir-chip-code', ilsid));
@@ -1607,6 +1798,10 @@ function renderSoftwareDetail(container, row, cfg, profilesMap) {
   card.appendChild(el('h1', 'dir-title', name));
   if (tagline) card.appendChild(el('div', 'dir-software-tagline', tagline));
 
+  // Prominent Developer Byline with embedded profile links
+  const bylineBar = el('div', 'dir-author-byline-bar');
+  bylineBar.appendChild(createInlineAuthorByline(devIds, profilesMap, 'Developed by', 'dir-author-byline-featured'));
+
   const statPieces = [`Reviewed by ${reviewerIds.length}`];
   if (pubDate) statPieces.push(`Published ${pubDate}`);
   if (row.likes !== null && row.likes !== undefined) {
@@ -1617,30 +1812,45 @@ function renderSoftwareDetail(container, row, cfg, profilesMap) {
     const cm = Number(row.comments);
     statPieces.push(`${cm} ${cm === 1 ? 'comment' : 'comments'}`);
   }
-  card.appendChild(el('div', 'dir-stat-inline', statPieces.join(' · ')));
+  bylineBar.appendChild(el('div', 'dir-stat-inline', statPieces.join(' · ')));
+  card.appendChild(bylineBar);
 
-  const actions = el('div', 'dir-actions-row');
-  if (isHttpUrl(openUrl)) {
-    const openBtn = el('a', 'dir-btn dir-btn-primary', 'Open');
-    openBtn.href = openUrl;
-    openBtn.target = '_blank';
-    openBtn.rel = 'noopener noreferrer';
-    actions.appendChild(openBtn);
-  }
-  if (isHttpUrl(repoUrl)) {
-    const srcBtn = el('a', 'dir-btn dir-btn-outline', 'Source');
-    srcBtn.href = repoUrl;
-    srcBtn.target = '_blank';
-    srcBtn.rel = 'noopener noreferrer';
-    actions.appendChild(srcBtn);
-  }
-  if (actions.childNodes.length > 0) card.appendChild(actions);
+  card.appendChild(createSoftwareMedia(ilsid, name, category, row.image_url, true));
 
-  if (desc) {
+  if (desc && details && desc !== details) {
     const descSec = el('div', 'dir-detail-section');
     descSec.appendChild(el('div', 'dir-detail-heading', 'Overview'));
-    descSec.appendChild(el('p', 'dir-full-prose', desc));
+    appendStructuredProse(descSec, desc);
     card.appendChild(descSec);
+
+    const detSec = el('div', 'dir-detail-section');
+    detSec.appendChild(el('div', 'dir-detail-heading', 'Details & Architecture'));
+    appendStructuredProse(detSec, details);
+    card.appendChild(detSec);
+  } else if (details || desc) {
+    const detSec = el('div', 'dir-detail-section');
+    detSec.appendChild(el('div', 'dir-detail-heading', 'Details'));
+    appendStructuredProse(detSec, details || desc);
+    card.appendChild(detSec);
+  }
+
+  const dossierFields = [
+    { label: 'Purpose', value: purpose },
+    { label: 'Goals', value: goals },
+    { label: 'Inspiration', value: inspiration },
+    { label: 'Work Processes', value: workProcesses },
+    { label: 'Effects & Impact', value: effects }
+  ].filter(f => Boolean(f.value));
+
+  if (dossierFields.length > 0) {
+    const dossierGrid = el('div', 'dir-dossier-grid');
+    dossierFields.forEach(({ label, value }) => {
+      const block = el('section', 'dir-dossier-block');
+      block.appendChild(el('h2', 'dir-detail-heading', label));
+      appendStructuredProse(block, value);
+      dossierGrid.appendChild(block);
+    });
+    card.appendChild(dossierGrid);
   }
 
   if (tech.length > 0) {
@@ -1658,6 +1868,45 @@ function renderSoftwareDetail(container, row, cfg, profilesMap) {
   if (reviewerIds.length > 0) {
     card.appendChild(createPeoplePillsSection('Reviewers', reviewerIds, profilesMap));
   }
+
+  // End-of-page Software Launch / Repository Action Callout
+  const endBar = el('div', 'dir-end-cta-bar');
+  const endCopy = el('div', 'dir-end-cta-copy');
+  endCopy.appendChild(el('div', 'dir-end-cta-kicker', ilsid ? `Software Access · ${ilsid}` : 'Software Access'));
+  endCopy.appendChild(
+    el(
+      'div',
+      'dir-end-cta-title',
+      isHttpUrl(openUrl) || isHttpUrl(repoUrl)
+        ? 'Launch the live software build or inspect its open-source repository.'
+        : 'No public deployment or repository URL has been attached to this software record yet.'
+    )
+  );
+  endBar.appendChild(endCopy);
+
+  if (isHttpUrl(openUrl) || isHttpUrl(repoUrl)) {
+    const endActions = el('div', 'dir-end-cta-actions');
+    if (isHttpUrl(openUrl)) {
+      const openBtn = el('a', 'dir-btn dir-btn-primary dir-end-cta-btn', 'Open Software ↗');
+      openBtn.href = openUrl;
+      openBtn.target = '_blank';
+      openBtn.rel = 'noopener noreferrer';
+      endActions.appendChild(openBtn);
+    }
+    if (isHttpUrl(repoUrl)) {
+      const srcBtn = el(
+        'a',
+        isHttpUrl(openUrl) ? 'dir-btn dir-btn-outline' : 'dir-btn dir-btn-primary dir-end-cta-btn',
+        'View Source Repository ↗'
+      );
+      srcBtn.href = repoUrl;
+      srcBtn.target = '_blank';
+      srcBtn.rel = 'noopener noreferrer';
+      endActions.appendChild(srcBtn);
+    }
+    endBar.appendChild(endActions);
+  }
+  card.appendChild(endBar);
 
   wrap.appendChild(card);
   container.replaceChildren(wrap);
@@ -1862,12 +2111,40 @@ function initDirectoryPage() {
     }
   }
 
+  const initialDocTitle = document.title;
+
+  const extractCleanRouteItemId = (pathname) => {
+    if (!cfg.cleanDetailRoute) return '';
+    const folder = cfg.basePath.replace(/^\/+|\/+$/g, '');
+    const re = new RegExp(`^(?:\\/[A-Za-z0-9._-]+)?\\/${folder}\\/([^/?#]+)\\/?$`, 'i');
+    const match = String(pathname || '').match(re);
+    if (!match) return '';
+    let seg = '';
+    try {
+      seg = decodeURIComponent(match[1] || '').trim();
+    } catch (_) {
+      seg = String(match[1] || '').trim();
+    }
+    if (!seg || /^index\.html$/i.test(seg) || /^img$/i.test(seg) || /\.[a-z0-9]{2,5}$/i.test(seg)) {
+      return '';
+    }
+    return seg;
+  };
+
+  const isSameDirectoryScope = (pathname) => {
+    const normBase = cfg.basePath.replace(/\/+$/, '');
+    const normPath = String(pathname || '').replace(/\/+$/, '');
+    if (normPath === normBase || normPath === `${normBase}/index.html`) return true;
+    if (cfg.cleanDetailRoute && extractCleanRouteItemId(pathname)) return true;
+    return false;
+  };
+
   root.addEventListener('click', (e) => {
     const link = e.target.closest('a[data-dir-nav="true"]');
     if (link) {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
       const url = new URL(link.href, window.location.origin);
-      if (url.pathname === window.location.pathname) {
+      if (isSameDirectoryScope(url.pathname)) {
         e.preventDefault();
         navigateUrl(url.pathname + url.search, true);
       }
@@ -1883,7 +2160,7 @@ function initDirectoryPage() {
     const targetHref = clickableCard.dataset.dirCardHref || '';
     if (!targetHref) return;
     const url = new URL(targetHref, window.location.origin);
-    if (url.pathname === window.location.pathname) {
+    if (isSameDirectoryScope(url.pathname)) {
       e.preventDefault();
       navigateUrl(url.pathname + url.search, true);
     } else {
@@ -1899,7 +2176,7 @@ function initDirectoryPage() {
       const targetHref = clickableCard.dataset.dirCardHref || '';
       if (!targetHref) return;
       const url = new URL(targetHref, window.location.origin);
-      if (url.pathname === window.location.pathname) {
+      if (isSameDirectoryScope(url.pathname)) {
         navigateUrl(url.pathname + url.search, true);
       } else {
         window.location.href = targetHref;
@@ -2149,10 +2426,20 @@ function initDirectoryPage() {
   function loadFromCurrentUrl() {
     const reqId = ++activeRequestId;
     const params = new URLSearchParams(window.location.search);
-    const idParam = cleanText(params.get('id'));
-    if (idParam) {
-      loadDetailView(idParam, reqId);
+    const routedPath = cleanText(params.get('__r'));
+    const pathId = extractCleanRouteItemId(routedPath || window.location.pathname);
+    const queryId = cleanText(params.get('id'));
+    const itemId = pathId || queryId;
+
+    if (itemId) {
+      if (cfg.cleanDetailRoute && !pathId && queryId) {
+        try {
+          window.history.replaceState({}, '', `${cfg.basePath}${encodeURIComponent(queryId)}`);
+        } catch (_) {}
+      }
+      loadDetailView(itemId, reqId);
     } else {
+      document.title = initialDocTitle;
       const pageNum = parseInt(params.get('page') || '1', 10);
       const searchBy = cleanText(params.get('by'));
       const searchQuery = cleanText(params.get('q'));

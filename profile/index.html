@@ -50,22 +50,21 @@
       </a>
 
       <div class="prof-header-controls">
-        <!-- Eye Toggle Button: Rendered ONLY when logged into this specific account -->
-        <button
-          type="button"
-          id="profile-eye-btn"
+        <!-- Edit Profile Link: Rendered ONLY when logged into this specific account -->
+        <a
+          href="/profile/edit/"
+          id="profile-edit-link"
           class="prof-eye-btn"
-          aria-pressed="false"
-          aria-label="Toggle between User View and Edit Mode"
-          title="Switch to Edit Mode"
+          aria-label="Edit my portfolio"
+          title="Edit Profile"
           hidden
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
           </svg>
-          <span class="prof-eye-label" id="profile-eye-label">Edit</span>
-        </button>
+          <span class="prof-eye-label">Edit</span>
+        </a>
 
         <a href="/" class="prof-home-btn">Home</a>
 
@@ -96,14 +95,18 @@
     </div>
 
     <div class="prof-drawer-group-label">On This Portfolio</div>
-    <nav class="prof-drawer-links" aria-label="Portfolio jump links">
-      <a href="#education-section" class="prof-drawer-link">01. Education</a>
-      <a href="#skills-section" class="prof-drawer-link">02. Skills, Badges &amp; Certifications</a>
-      <a href="#experiences-section" class="prof-drawer-link">03. Experiences</a>
-      <a href="#researches-section" class="prof-drawer-link">04. Researches &amp; Journals</a>
-      <a href="#softwares-section" class="prof-drawer-link">05. Softwares</a>
-      <a href="#cocurriculars-section" class="prof-drawer-link">06. Co-Curriculars</a>
-      <a href="#contact-section" class="prof-drawer-link">07. Contact</a>
+    <nav class="prof-drawer-links" id="prof-drawer-portfolio-links" aria-label="Portfolio jump links">
+      <a href="#teacher-scholarship-section" id="drawer-link-teacher" class="prof-drawer-link" hidden>01. Scholarship &amp; Peer Review</a>
+      <a href="#education-section" id="drawer-link-education" class="prof-drawer-link">01. Education</a>
+      <a href="#skills-section" id="drawer-link-skills" class="prof-drawer-link">02. Skills, Badges &amp; Certifications</a>
+      <a href="#experiences-section" id="drawer-link-experiences" class="prof-drawer-link">03. Experiences</a>
+      <a href="#researches-section" id="drawer-link-researches" class="prof-drawer-link">04. Researches &amp; Journals</a>
+      <a href="#softwares-section" id="drawer-link-softwares" class="prof-drawer-link">05. Softwares</a>
+      <a href="#cocurriculars-section" id="drawer-link-cocurriculars" class="prof-drawer-link">06. Co-Curriculars</a>
+      <a href="#inst-overview-anchor" id="drawer-link-inst-overview" class="prof-drawer-link" hidden>01. Institutional Overview</a>
+      <a href="#inst-student-metrics-anchor" id="drawer-link-inst-students" class="prof-drawer-link" hidden>02. Student Cohort Metrics</a>
+      <a href="#inst-teacher-metrics-anchor" id="drawer-link-inst-teachers" class="prof-drawer-link" hidden>03. Faculty &amp; Teacher Metrics</a>
+      <a href="#contact-section" id="drawer-link-contact" class="prof-drawer-link">07. Contact</a>
     </nav>
 
     <div class="prof-drawer-group-label">The Iteration Lab</div>
@@ -115,24 +118,11 @@
       <a href="/teachers/" class="prof-drawer-link">Teachers Directory</a>
       <a href="/institutes/" class="prof-drawer-link">College Partners</a>
       <a href="/communities/" class="prof-drawer-link">Communities</a>
+      <a href="/teams/" class="prof-drawer-link">Groups &amp; Teams</a>
       <a href="/login.html" class="prof-drawer-link">Account &amp; Sign In</a>
     </nav>
   </aside>
 
-  <!-- Edit Mode Contextual Ribbon -->
-  <div class="prof-edit-ribbon" id="prof-edit-ribbon" hidden>
-    <div class="container prof-edit-ribbon-inner">
-      <div class="prof-edit-hint">
-        <span class="prof-edit-tag">EDIT MODE</span>
-        <span>Double-click any highlighted text, quote, bold heading, or GPA to edit. Changes save directly to your account; set any GPA or WhatsApp to 0 to hide it.</span>
-      </div>
-      <div class="prof-edit-actions">
-        <span class="prof-save-status" id="prof-save-status" aria-live="polite"></span>
-        <button type="button" class="prof-ribbon-btn" id="prof-reset-defaults-btn">Reload Saved Data</button>
-        <button type="button" class="prof-ribbon-btn prof-ribbon-btn-primary" id="prof-exit-edit-btn">Done · View as User</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Profile Not Found / Load Error State (Hidden during normal view) -->
   <section class="prof-status-screen" id="prof-status-screen" hidden aria-live="polite">
@@ -151,48 +141,141 @@
   </section>
 
   <main id="main-content">
-    <!-- 2. HERO SPLIT SECTION -->
-    <section class="prof-hero" aria-labelledby="prof-hero-headline">
-      <div class="container prof-hero-grid">
-        <div class="prof-hero-copy">
-          <div
-            id="prof-role-kicker"
-            class="prof-role-kicker"
-            data-editable="roleKicker"
-            data-single-line="true"
-          >Student · Researcher</div>
+    <!-- 2A. INSTITUTE PROFILE VIEW (/profile/I/<username>) -->
+    <div id="institute-profile-view" class="prof-inst-view" hidden>
+      <section class="prof-inst-header-section" id="inst-overview-anchor" aria-labelledby="inst-college-name">
+        <div class="prof-inst-cover-stage" id="inst-cover-stage">
+          <img
+            id="inst-cover-img"
+            class="prof-inst-cover-img"
+            alt="Campus cover banner"
+            referrerpolicy="no-referrer"
+            hidden
+          >
+          <div class="prof-inst-cover-fallback" id="inst-cover-fallback" aria-hidden="true">
+            <div class="prof-inst-cover-gridlines"></div>
+          </div>
+        </div>
 
-          <div class="prof-member-identity">
-            <span
-              id="prof-member-name"
-              class="prof-member-name"
-              data-editable="name"
-              data-single-line="true"
-            >Tanvir Hossain</span>
-            <span class="prof-identity-sep" aria-hidden="true">·</span>
-            <span
-              id="prof-member-inst"
-              class="prof-member-inst"
-              data-editable="institution"
-              data-single-line="true"
-            >Notre Dame College, Dhaka</span>
+        <div class="container">
+          <div class="prof-inst-identity-bar">
+            <div class="prof-inst-crest-wrap">
+              <div class="prof-inst-crest" id="inst-crest-box">
+                <img
+                  id="inst-logo-img"
+                  class="prof-inst-logo-img"
+                  alt="Institute crest"
+                  referrerpolicy="no-referrer"
+                  hidden
+                >
+                <span id="inst-logo-initials" class="prof-inst-logo-initials">IL</span>
+              </div>
+            </div>
+
+            <div class="prof-inst-title-block">
+              <div class="prof-role-kicker" id="inst-kicker">Partner Academic Institution</div>
+              <h1 class="prof-inst-college-name" id="inst-college-name">Academic Institution</h1>
+              <div class="prof-inst-meta-line" id="inst-meta-line"></div>
+            </div>
+
+            <div class="prof-inst-cta-group" id="inst-cta-group">
+              <a
+                href="#"
+                id="inst-website-btn"
+                class="prof-cta-primary"
+                target="_blank"
+                rel="noopener noreferrer"
+                hidden
+              >
+                <span>Official Website</span>
+                <span class="prof-cta-arrow-tile" aria-hidden="true">↗</span>
+              </a>
+              <a
+                href="#"
+                id="inst-whatsapp-btn"
+                class="prof-cta-secondary"
+                target="_blank"
+                rel="noopener noreferrer"
+                hidden
+              >WhatsApp Desk</a>
+            </div>
           </div>
 
-          <h1
-            id="prof-hero-headline"
-            class="prof-hero-headline"
-            data-editable="headline"
-          >Turn Insight Into Discovery</h1>
+          <div class="prof-inst-overview-grid">
+            <div class="prof-inst-overview-prose">
+              <div class="prof-section-index">01 · Institutional Charter &amp; Overview</div>
+              <p class="prof-inst-motto" id="inst-motto" hidden></p>
+              <p class="prof-inst-bio" id="inst-bio"></p>
+            </div>
 
-          <p
-            id="prof-hero-lead"
-            class="prof-hero-lead"
-            data-editable="lead"
-          >Investigating computational linguistics, open embedded telemetry, and reproducible student research workflows across secondary and collegiate cohorts in Bangladesh.</p>
+            <aside class="prof-inst-facts-card" aria-label="Institutional Registry Details">
+              <div class="prof-inst-facts-heading">Registry Fact Sheet</div>
+              <dl class="prof-inst-facts-list" id="inst-facts-list"></dl>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="prof-section prof-section-alt" id="inst-student-metrics-anchor" aria-labelledby="inst-student-metrics-heading">
+        <div class="container">
+          <div class="prof-section-head">
+            <div>
+              <div class="prof-section-index">02 · Collegiate Student Cohort</div>
+              <h2 class="prof-section-title" id="inst-student-metrics-heading">Student Research &amp; Engineering Metrics</h2>
+              <p class="prof-section-desc">Campus enrollment alongside verified Iteration Lab student members, peer-reviewed student papers, and open software builds.</p>
+            </div>
+          </div>
+
+          <div class="prof-inst-metrics-grid prof-inst-metrics-4" id="inst-student-metrics-grid" role="list"></div>
+        </div>
+      </section>
+
+      <section class="prof-section" id="inst-teacher-metrics-anchor" aria-labelledby="inst-teacher-metrics-heading">
+        <div class="container">
+          <div class="prof-section-head">
+            <div>
+              <div class="prof-section-index">03 · Faculty &amp; Mentorship</div>
+              <h2 class="prof-section-title" id="inst-teacher-metrics-heading">Teacher &amp; Faculty Publication Metrics</h2>
+              <p class="prof-section-desc">Institutional faculty strength, active Iteration Lab mentor teachers, and scholarly research published by member educators.</p>
+            </div>
+          </div>
+
+          <div class="prof-inst-metrics-grid prof-inst-metrics-3" id="inst-teacher-metrics-grid" role="list"></div>
+
+          <div class="prof-inst-works-wrap" id="inst-works-wrap" hidden>
+            <div class="prof-inst-works-head">
+              <h3 class="prof-inst-works-title">Recent Publications &amp; Software by Affiliated Members</h3>
+            </div>
+            <div class="prof-inst-works-list" id="inst-works-list"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 2B. INDIVIDUAL MEMBER HERO SPLIT SECTION (S / R / T) -->
+    <section class="prof-hero" id="member-hero-section" aria-labelledby="prof-hero-headline">
+      <div class="container prof-hero-grid">
+        <div class="prof-hero-copy">
+          <div id="prof-role-kicker" class="prof-role-kicker">Student · Researcher</div>
+
+          <div class="prof-member-identity">
+            <span id="prof-member-name" class="prof-member-name">Tanvir Hossain</span>
+            <span class="prof-identity-sep" aria-hidden="true">·</span>
+            <span id="prof-member-inst" class="prof-member-inst">Notre Dame College, Dhaka</span>
+          </div>
+
+          <h1 id="prof-hero-headline" class="prof-hero-headline">Turn Insight Into Discovery</h1>
+
+          <p id="prof-hero-lead" class="prof-hero-lead">Investigating computational linguistics, open embedded telemetry, and reproducible student research workflows across secondary and collegiate cohorts in Bangladesh.</p>
 
           <div class="prof-hero-actions">
             <a href="#researches-section" id="prof-primary-cta" class="prof-cta-primary">
               <span id="prof-primary-cta-text">Researches</span>
+              <span class="prof-cta-arrow-tile" aria-hidden="true">↗</span>
+            </a>
+
+            <a href="#softwares-section" id="prof-software-cta" class="prof-cta-primary" hidden>
+              <span id="prof-software-cta-text">Software</span>
               <span class="prof-cta-arrow-tile" aria-hidden="true">↗</span>
             </a>
 
@@ -203,13 +286,6 @@
               target="_blank"
               rel="noopener noreferrer"
             >WhatsApp</a>
-
-            <button
-              type="button"
-              id="prof-cta-switch-btn"
-              class="prof-cta-edit-switch"
-              hidden
-            >Switch button to "Software"</button>
           </div>
         </div>
 
@@ -219,10 +295,6 @@
             <span class="prof-crop-mark prof-crop-tl" aria-hidden="true"></span>
             <span class="prof-crop-mark prof-crop-bl" aria-hidden="true"></span>
             <div class="prof-portrait-frame">
-              <button type="button" id="prof-photo-edit-btn" class="prof-photo-edit-btn" hidden>
-                Change Portrait
-              </button>
-              <input type="file" id="prof-photo-file-input" accept="image/*" hidden>
 
               <img
                 id="prof-portrait-img"
@@ -253,31 +325,61 @@
     </section>
 
     <!-- 3. OBSIDIAN ARCHITECTURAL BAND: QUOTE + DESCRIPTION + DYNAMIC GPA ROW -->
-    <section class="prof-obsidian-band" aria-label="Research Statement and Academic Standing">
+    <section class="prof-obsidian-band" id="member-obsidian-band" aria-label="Research Statement and Academic Standing">
       <div class="container">
         <div class="prof-statement-wrap">
-          <div
-            id="prof-statement-kicker"
-            class="prof-statement-kicker"
-            data-editable="statementKicker"
-            data-single-line="true"
-          >Research Philosophy</div>
+          <div id="prof-statement-kicker" class="prof-statement-kicker">Research Philosophy</div>
 
-          <blockquote
-            id="prof-quote-text"
-            class="prof-quote-text"
-            data-editable="quote"
-          >“Rigorous inquiry begins the moment curiosity is paired with open methodology, transparent data, and peer verification.”</blockquote>
+          <blockquote id="prof-quote-text" class="prof-quote-text">“Rigorous inquiry begins the moment curiosity is paired with open methodology, transparent data, and peer verification.”</blockquote>
 
-          <p
-            id="prof-description-text"
-            class="prof-description-text"
-            data-editable="description"
-          >Committed to building open-source scientific instruments and publishing peer-reviewed student preprints through The Iteration Lab network—bridging classroom theory with field-tested engineering.</p>
+          <p id="prof-description-text" class="prof-description-text">Committed to building open-source scientific instruments and publishing peer-reviewed student preprints through The Iteration Lab network—bridging classroom theory with field-tested engineering.</p>
         </div>
 
-        <!-- Dynamic GPA & Publications Row (Hides 0 / empty GPAs in User Mode with zero blank gaps) -->
+        <!-- Dynamic GPA & Publications Row (Hides 0 / empty GPAs with zero blank gaps) -->
         <div class="prof-metrics-row" id="prof-metrics-row" role="list" aria-label="Academic GPA and Research Metrics"></div>
+      </div>
+    </section>
+
+    <!-- 3B. TEACHER SCHOLARSHIP, INSTITUTE AFFILIATION & PEER REVIEW SECTION (Shown only for T) -->
+    <section class="prof-section prof-section-alt" id="teacher-scholarship-section" aria-labelledby="teacher-scholarship-heading" hidden>
+      <div class="container">
+        <div class="prof-section-head">
+          <div>
+            <div class="prof-section-index" id="teacher-section-index">01 · Faculty Affiliation &amp; Peer Review</div>
+            <h2 class="prof-section-title" id="teacher-scholarship-heading">Institute &amp; Editorial Impact</h2>
+            <p class="prof-section-desc">Institutional faculty appointment, peer-reviewed research evaluations, and scholarly manuscripts published on The Iteration Lab.</p>
+          </div>
+        </div>
+
+        <div class="prof-teacher-impact-grid">
+          <div class="prof-teacher-inst-card">
+            <div class="prof-contact-label">Affiliated Institute</div>
+            <div class="prof-teacher-inst-name" id="teacher-inst-name">Academic Institution</div>
+            <div class="prof-teacher-inst-meta" id="teacher-inst-meta"></div>
+            <div class="prof-teacher-inst-actions" id="teacher-inst-actions" hidden>
+              <a href="#" id="teacher-inst-link" class="prof-card-link">Open Institute Profile →</a>
+            </div>
+          </div>
+
+          <div class="prof-teacher-stat-card">
+            <div class="prof-teacher-stat-num" id="teacher-reviewed-count">00</div>
+            <div class="prof-teacher-stat-label">Total Researches Reviewed</div>
+            <div class="prof-teacher-stat-sub">Peer-review evaluations &amp; editorial verifications</div>
+          </div>
+
+          <div class="prof-teacher-stat-card">
+            <div class="prof-teacher-stat-num" id="teacher-published-count">00</div>
+            <div class="prof-teacher-stat-label">Total Researches Published</div>
+            <div class="prof-teacher-stat-sub">Authored &amp; co-authored open research papers</div>
+          </div>
+        </div>
+
+        <div class="prof-teacher-reviewed-wrap" id="teacher-reviewed-list-wrap" hidden>
+          <div class="prof-inst-works-head">
+            <h3 class="prof-inst-works-title">Manuscripts Peer-Reviewed on The Iteration Lab</h3>
+          </div>
+          <div class="prof-inst-works-list" id="teacher-reviewed-list"></div>
+        </div>
       </div>
     </section>
 
@@ -285,14 +387,13 @@
     <section class="prof-section" id="education-section" aria-labelledby="edu-heading">
       <div class="container prof-cv-layout">
         <div class="prof-cv-intro">
-          <div class="prof-section-index">01 · Academic Background</div>
+          <div class="prof-section-index" id="edu-section-index">01 · Academic Background</div>
           <h2 class="prof-section-title" id="edu-heading">Education</h2>
           <p class="prof-section-desc">Formal academic progression, concentrations, and board distinctions formatted as an open research curriculum vitae.</p>
         </div>
 
         <div>
           <div class="prof-cv-list" id="edu-cv-list"></div>
-          <button type="button" id="education-add-btn" class="prof-cv-add-btn" hidden>+ Add Education Entry</button>
         </div>
       </div>
     </section>
@@ -304,7 +405,7 @@
           <div class="container">
             <div class="prof-stack-head">
               <div>
-                <div class="prof-section-index">02 · Verified Competencies</div>
+                <div class="prof-section-index" id="skills-section-index">02 · Verified Competencies</div>
                 <h2 class="prof-section-title" id="skills-heading">Skills, Badges &amp; Certifications</h2>
               </div>
               <div class="prof-stack-counter" id="skills-stack-counter">01 / 03</div>
@@ -320,14 +421,13 @@
     <section class="prof-section" id="experiences-section" aria-labelledby="exp-heading">
       <div class="container prof-cv-layout">
         <div class="prof-cv-intro">
-          <div class="prof-section-index">03 · Research &amp; Lab Track</div>
+          <div class="prof-section-index" id="exp-section-index">03 · Research &amp; Lab Track</div>
           <h2 class="prof-section-title" id="exp-heading">Experiences</h2>
           <p class="prof-section-desc">Laboratory appointments, working-group stewardship, field campaigns, and collaborative mentoring roles.</p>
         </div>
 
         <div>
           <div class="prof-cv-list" id="exp-cv-list"></div>
-          <button type="button" id="experiences-add-btn" class="prof-cv-add-btn" hidden>+ Add Experience Entry</button>
         </div>
       </div>
     </section>
@@ -339,7 +439,7 @@
           <div class="container">
             <div class="prof-stack-head">
               <div>
-                <div class="prof-section-index">04 · Open Scholarship</div>
+                <div class="prof-section-index" id="researches-section-index">04 · Open Scholarship</div>
                 <h2 class="prof-section-title" id="researches-heading">Researches &amp; Journals</h2>
               </div>
               <div class="prof-stack-counter" id="researches-stack-counter">01 / 03</div>
@@ -358,7 +458,7 @@
           <div class="container">
             <div class="prof-stack-head">
               <div>
-                <div class="prof-section-index">05 · Engineering &amp; Code</div>
+                <div class="prof-section-index" id="softwares-section-index">05 · Engineering &amp; Code</div>
                 <h2 class="prof-section-title" id="softwares-heading">Softwares</h2>
               </div>
               <div class="prof-stack-counter" id="softwares-stack-counter">01 / 03</div>
@@ -377,7 +477,7 @@
           <div class="container">
             <div class="prof-stack-head">
               <div>
-                <div class="prof-section-index">06 · Community &amp; Leadership</div>
+                <div class="prof-section-index" id="cocurriculars-section-index">06 · Community &amp; Leadership</div>
                 <h2 class="prof-section-title" id="cocurriculars-heading">Co-Curriculars</h2>
               </div>
               <div class="prof-stack-counter" id="cocurriculars-stack-counter">01 / 03</div>
@@ -389,17 +489,37 @@
       </div>
     </section>
 
-    <!-- 10. CONTACT SECTION -->
+    <!-- 10. CONTACT & FAMILY IDENTITY SECTION -->
     <section class="prof-section" id="contact-section" aria-labelledby="contact-heading">
       <div class="container prof-contact-grid">
         <div>
-          <div class="prof-section-index">07 · Academic Correspondence</div>
-          <h2 class="prof-section-title" id="contact-heading">Contact</h2>
-          <p class="prof-section-desc" style="margin-bottom:24px;">
+          <div class="prof-section-index" id="contact-section-index">07 · Academic Correspondence</div>
+          <h2 class="prof-section-title" id="contact-heading">Contact &amp; Identity</h2>
+          <p class="prof-section-desc" id="contact-desc" style="margin-bottom:24px;">
             Reach out regarding research replication, dataset requests, co-authorship, or peer-review coordination through The Iteration Lab.
           </p>
 
           <div class="prof-contact-card">
+            <div class="prof-contact-row" id="prof-contact-inst-row" hidden>
+              <div class="prof-contact-label">Affiliated Institute</div>
+              <div class="prof-contact-val" id="prof-contact-inst-val"></div>
+            </div>
+
+            <div class="prof-contact-row" id="prof-contact-father-row" hidden>
+              <div class="prof-contact-label">Father’s Name</div>
+              <div class="prof-contact-val" id="prof-contact-father-val"></div>
+            </div>
+
+            <div class="prof-contact-row" id="prof-contact-mother-row" hidden>
+              <div class="prof-contact-label">Mother’s Name</div>
+              <div class="prof-contact-val" id="prof-contact-mother-val"></div>
+            </div>
+
+            <div class="prof-contact-row" id="prof-contact-batches-row" hidden>
+              <div class="prof-contact-label">Academic Batches</div>
+              <div class="prof-contact-val" id="prof-contact-batches-val"></div>
+            </div>
+
             <div class="prof-contact-row" id="prof-contact-email-row">
               <div class="prof-contact-label">Academic &amp; Lab Email</div>
               <div class="prof-contact-val">
@@ -408,13 +528,6 @@
                   href="mailto:coordination@iterationlab.org"
                   style="color:var(--prof-ink);"
                 >coordination@iterationlab.org</a>
-                <span
-                  id="prof-contact-email"
-                  data-editable="email"
-                  data-single-line="true"
-                  data-nullable-field="true"
-                  hidden
-                >coordination@iterationlab.org</span>
               </div>
             </div>
 
@@ -428,25 +541,12 @@
                   rel="noopener noreferrer"
                   style="color:var(--prof-orange);"
                 >+880 1711-000101</a>
-                <span
-                  id="prof-contact-wa-edit"
-                  data-editable="whatsapp"
-                  data-single-line="true"
-                  data-nullable-field="true"
-                  style="color:var(--prof-orange);"
-                  hidden
-                >+880 1711-000101</span>
               </div>
             </div>
 
             <div class="prof-contact-row">
-              <div class="prof-contact-label">Location &amp; Network</div>
-              <div
-                id="prof-contact-location"
-                class="prof-contact-val"
-                data-editable="location"
-                data-single-line="true"
-              >Motijheel, Dhaka, Bangladesh</div>
+              <div class="prof-contact-label" id="prof-contact-location-label">Location &amp; Network</div>
+              <div id="prof-contact-location" class="prof-contact-val">Motijheel, Dhaka, Bangladesh</div>
             </div>
           </div>
         </div>
@@ -498,6 +598,7 @@
             <a href="/students/" class="footer-link-item">Students Database</a>
             <a href="/institutes/" class="footer-link-item">College Partners</a>
             <a href="/communities/" class="footer-link-item">Communities</a>
+            <a href="/teams/" class="footer-link-item">Groups &amp; Teams</a>
             <a href="/leaders/" class="footer-link-item">Leaders Directory</a>
           </div>
         </div>
@@ -545,12 +646,13 @@
   <aside class="prof-demo-dock" id="prof-demo-dock" aria-label="Sample Portfolio Switcher" hidden>
     <span class="prof-demo-label">SAMPLE VIEW:</span>
     <select id="prof-demo-role-select" class="prof-demo-select" aria-label="Select sample member role">
-      <option value="student">Student (UG/Grad = 0 hidden)</option>
+      <option value="student">Student (S)</option>
       <option value="founder">Founder · Ikramul Hoque</option>
-      <option value="teacher">Teacher (All GPAs shown)</option>
-      <option value="publisher">Independent Publisher</option>
+      <option value="teacher">Teacher (T · Institute &amp; Reviews)</option>
+      <option value="institute">Partner Institute (I · Cover &amp; Metrics)</option>
+      <option value="publisher">Individual Reader (R)</option>
     </select>
-    <button type="button" id="prof-demo-auth-btn" class="prof-demo-auth-btn is-owner">Session: Owner (Eye Visible)</button>
+    <button type="button" id="prof-demo-auth-btn" class="prof-demo-auth-btn is-owner">Session: Owner (Edit Visible)</button>
     <button type="button" id="prof-demo-close" class="prof-demo-close" aria-label="Hide sample toolbar" title="Hide toolbar">✕</button>
   </aside>
 

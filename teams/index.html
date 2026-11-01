@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Groups &amp; Teams · The Iteration Lab</title>
+  <meta name="description" content="Collaborative student research squads, inter-collegiate engineering teams, and faculty-advised laboratory groups on The Iteration Lab.">
+  <link rel="icon" type="image/png" href="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/assets/css/directory.css">
+  <style>
+    .teams-shell {
+      padding: 48px 0 88px;
+    }
+    .teams-blueprint-hero {
+      position: relative;
+      background: #0B0D13;
+      color: #F8FAFC;
+      border-radius: 12px;
+      border: 1px solid #1E2433;
+      overflow: hidden;
+      padding: clamp(32px, 5vw, 56px);
+      margin-bottom: 36px;
+    }
+    .teams-blueprint-hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+      background-size: 36px 36px;
+      pointer-events: none;
+    }
+    .teams-hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+      gap: 40px;
+      align-items: center;
+    }
+    @media (max-width: 860px) {
+      .teams-hero-grid {
+        grid-template-columns: 1fr;
+        gap: 28px;
+      }
+    }
+    .teams-kicker {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: #FF7A00;
+      margin-bottom: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    .teams-headline {
+      font-family: var(--font-serif);
+      font-size: clamp(2.1rem, 4.2vw, 3.35rem);
+      font-weight: 500;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      color: #FFFFFF;
+      margin-bottom: 16px;
+      text-wrap: balance;
+    }
+    .teams-lead {
+      font-size: 15.5px;
+      line-height: 1.7;
+      color: #CBD5E1;
+      max-width: 58ch;
+      margin-bottom: 28px;
+    }
+    .teams-cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .teams-diagram-panel {
+      background: rgba(17, 21, 32, 0.9);
+      border: 1px solid #283044;
+      border-radius: 10px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .teams-diagram-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      border-bottom: 1px solid #232A3B;
+      padding-bottom: 12px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: #94A3B8;
+      font-variant-numeric: tabular-nums;
+    }
+    .teams-diagram-stage {
+      font-family: var(--font-mono);
+      color: #FF9838;
+      font-weight: 600;
+    }
+    .teams-spec-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .teams-spec-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed #232A3B;
+      font-size: 13px;
+    }
+    .teams-spec-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .teams-spec-label {
+      color: #94A3B8;
+    }
+    .teams-spec-val {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #F8FAFC;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    .teams-pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-top: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      margin-bottom: 40px;
+    }
+    @media (max-width: 860px) {
+      .teams-pillars-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .teams-pillar {
+      padding: 28px 26px;
+      border-right: 1px solid var(--border-light);
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .teams-pillar:last-child {
+      border-right: none;
+    }
+    @media (max-width: 860px) {
+      .teams-pillar {
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        padding: 24px 0;
+      }
+      .teams-pillar:last-child {
+        border-bottom: none;
+      }
+    }
+    .teams-pillar-index {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: #C2410C;
+      font-variant-numeric: tabular-nums;
+    }
+    .teams-pillar-title {
+      font-family: var(--font-serif);
+      font-size: 21px;
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.25;
+    }
+    .teams-pillar-desc {
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--text-secondary);
+    }
+    .teams-roadmap-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: clamp(22px, 3.5vw, 34px);
+    }
+    .teams-roadmap-head {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border-light);
+      margin-bottom: 8px;
+    }
+    .teams-roadmap-title {
+      font-family: var(--font-serif);
+      font-size: 23px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .teams-roadmap-sub {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .teams-milestone-list {
+      display: flex;
+      flex-direction: column;
+    }
+    .teams-milestone {
+      display: grid;
+      grid-template-columns: 110px minmax(0, 1fr) 150px;
+      gap: 20px;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      align-items: baseline;
+    }
+    .teams-milestone:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    @media (max-width: 680px) {
+      .teams-milestone {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+    }
+    .teams-ms-code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .teams-ms-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .teams-ms-note {
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      margin-top: 3px;
+      line-height: 1.55;
+    }
+    .teams-ms-state {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      text-align: right;
+      color: #C2410C;
+      font-variant-numeric: tabular-nums;
+    }
+    .teams-ms-state.is-ready {
+      color: #065F46;
+    }
+    @media (max-width: 680px) {
+      .teams-ms-state {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- HEADER -->
+  <header class="site-header" role="banner">
+    <div class="container header-inner">
+      <a href="/" class="brand-wrapper" aria-label="The Iteration Lab Home">
+        <div class="brand-icon-tile">
+          <img src="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png" alt="Iteration Lab Spiral Emblem" width="34" height="34">
+        </div>
+        <span class="brand-name">The Iteration Lab</span>
+      </a>
+
+      <nav class="header-nav" aria-label="Main Navigation">
+        <a href="/#mission" class="nav-link">Mission</a>
+        <a href="/#research" class="nav-link">Research &amp; Publications</a>
+        <a href="/#software" class="nav-link">Software Builds</a>
+        <a href="/#partners" class="nav-link">College Partners</a>
+        <a href="/#leaders" class="nav-link">People</a>
+        <a href="/#events" class="nav-link">Events</a>
+        <a href="/#contact" class="nav-link">About</a>
+      </nav>
+
+      <div class="header-actions">
+        <button type="button" class="header-search-btn search-icon-btn" id="search-btn" aria-label="Open search modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <a href="/login.html" class="btn btn-orange">Join us</a>
+
+        <button type="button" class="mobile-menu-btn" id="mobile-menu-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mobile-nav-drawer">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="mobile-nav-drawer" id="mobile-nav-drawer" role="dialog" aria-modal="true" aria-label="Mobile Navigation">
+    <a href="/">← Home Page</a>
+    <a href="/researches/">Research &amp; Publications</a>
+    <a href="/softwares/">Software Builds</a>
+    <a href="/institutes/">College Partners</a>
+    <a href="/communities/">Communities</a>
+    <a href="/leaders/">Our Top Leaders</a>
+    <a href="/teachers/">Teachers Database</a>
+    <a href="/students/">Students Database</a>
+    <a href="/login.html" style="color:var(--brand-orange);">Join us &amp; Sign In →</a>
+  </div>
+
+  <main id="main-content" class="teams-shell">
+    <div class="container">
+      <div class="dir-home-bar dir-home-bar-top">
+        <a href="/" class="dir-home-link">
+          <span class="dir-home-link-arrow" aria-hidden="true">←</span>
+          <span>Return to Home Page</span>
+        </a>
+      </div>
+
+      <!-- ARCHITECTURAL BLUEPRINT BANNER -->
+      <section class="teams-blueprint-hero" aria-labelledby="teams-main-heading">
+        <div class="teams-hero-grid">
+          <div>
+            <div class="teams-kicker">MODULE IN ENGINEERING · GROUPS &amp; RESEARCH TEAMS</div>
+            <h1 class="teams-headline" id="teams-main-heading">Groups &amp; Research Teams Workspace is Under Active Development.</h1>
+            <p class="teams-lead">
+              We are building dedicated workspace hubs where student investigators, software builders, and faculty mentors form persistent research squads—linking co-authored papers, shared repositories, and collegiate chapters under a single team identity.
+            </p>
+            <div class="teams-cta-row">
+              <a href="/communities/" class="btn btn-orange">Browse Active Communities</a>
+              <a href="/researches/" class="btn btn-dark">Explore Research Archive</a>
+            </div>
+          </div>
+
+          <aside class="teams-diagram-panel" aria-label="Module build specification">
+            <div class="teams-diagram-head">
+              <span>SPECIFICATION LEDGER</span>
+              <span class="teams-diagram-stage">BUILD STAGE 02 / 03</span>
+            </div>
+            <div class="teams-spec-rows">
+              <div class="teams-spec-row">
+                <span class="teams-spec-label">Backing Table</span>
+                <span class="teams-spec-val">public.groups</span>
+              </div>
+              <div class="teams-spec-row">
+                <span class="teams-spec-label">Team Leads</span>
+                <span class="teams-spec-val">l_id · l2_id</span>
+              </div>
+              <div class="teams-spec-row">
+                <span class="teams-spec-label">Faculty Observer</span>
+                <span class="teams-spec-val">p_id (Teacher)</span>
+              </div>
+              <div class="teams-spec-row">
+                <span class="teams-spec-label">Squad Roster</span>
+                <span class="teams-spec-val">m_id (uuid[])</span>
+              </div>
+              <div class="teams-spec-row">
+                <span class="teams-spec-label">Linked Outputs</span>
+                <span class="teams-spec-val">ILR &amp; ILS Works</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- UPCOMING CAPABILITIES -->
+      <section class="teams-pillars-grid" aria-label="Planned Groups and Teams features">
+        <article class="teams-pillar">
+          <div class="teams-pillar-index">01 · INTER-COLLEGIATE SQUADS</div>
+          <h2 class="teams-pillar-title">Student &amp; Developer Working Units</h2>
+          <p class="teams-pillar-desc">
+            Form focused project squads across single or multiple EIIN partner colleges with designated student leads, role rosters, and transparent contributor attribution.
+          </p>
+        </article>
+
+        <article class="teams-pillar">
+          <div class="teams-pillar-index">02 · FACULTY MENTORSHIP</div>
+          <h2 class="teams-pillar-title">Teacher Oversight &amp; Peer Review</h2>
+          <p class="teams-pillar-desc">
+            Connect every student research group with an observing faculty mentor to guide experimental design, safety verification, and pre-submission manuscript review.
+          </p>
+        </article>
+
+        <article class="teams-pillar">
+          <div class="teams-pillar-index">03 · UNIFIED OUTPUT INDEX</div>
+          <h2 class="teams-pillar-title">Co-Authored Papers &amp; Software</h2>
+          <p class="teams-pillar-desc">
+            Automatically aggregate every monograph (<code>ILR</code>) and open-source software build (<code>ILS</code>) produced by team members onto a permanent team dossier.
+          </p>
+        </article>
+      </section>
+
+      <!-- ENGINEERING ROLLOUT SCHEDULE -->
+      <section class="teams-roadmap-card" aria-labelledby="teams-roadmap-heading">
+        <div class="teams-roadmap-head">
+          <h2 class="teams-roadmap-title" id="teams-roadmap-heading">Development Rollout Ledger</h2>
+          <span class="teams-roadmap-sub">THE ITERATION LAB · PLATFORM INFRASTRUCTURE</span>
+        </div>
+
+        <div class="teams-milestone-list">
+          <div class="teams-milestone">
+            <div class="teams-ms-code">PHASE 01</div>
+            <div>
+              <div class="teams-ms-name">Database Schema &amp; Community Directory</div>
+              <p class="teams-ms-note">Core <code>public.groups</code> schema, member UUID arrays, lead/observer pointers, and public Communities browser.</p>
+            </div>
+            <div class="teams-ms-state is-ready">LIVE</div>
+          </div>
+
+          <div class="teams-milestone">
+            <div class="teams-ms-code">PHASE 02</div>
+            <div>
+              <div class="teams-ms-name">Team Formation, Invitations &amp; Role Management</div>
+              <p class="teams-ms-note">Self-service team creation for verified students and teachers, invite approvals, and EIIN chapter tagging.</p>
+            </div>
+            <div class="teams-ms-state">IN DEVELOPMENT</div>
+          </div>
+
+          <div class="teams-milestone">
+            <div class="teams-ms-code">PHASE 03</div>
+            <div>
+              <div class="teams-ms-name">Shared Publication &amp; Software Dossiers</div>
+              <p class="teams-ms-note">Dedicated team portfolio pages linking collaborative manuscripts, datasets, and code repositories.</p>
+            </div>
+            <div class="teams-ms-state">QUEUED</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="dir-home-bar dir-home-bar-bottom">
+        <a href="/" class="dir-home-link">
+          <span class="dir-home-link-arrow" aria-hidden="true">←</span>
+          <span>Return to Home Page</span>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <img src="/public/assets/aistudio/iteration-lab-logo-jetspiral_de0a9952.png" alt="The Iteration Lab — Design · Simulate · Machine" class="footer-logo-tile" width="220" height="110" loading="lazy">
+          <p class="footer-mission">
+            An open educational research network and publication platform dedicated to fostering student inquiry, peer-reviewed projects, and open software builds from concept to societal impact.
+          </p>
+        </div>
+
+        <div>
+          <div class="footer-heading">Directories</div>
+          <div class="footer-links-list">
+            <a href="/" class="footer-link-item">Home Page</a>
+            <a href="/researches/" class="footer-link-item">Research &amp; Journals</a>
+            <a href="/softwares/" class="footer-link-item">Software Builds</a>
+            <a href="/teachers/" class="footer-link-item">Teachers Database</a>
+            <a href="/students/" class="footer-link-item">Students Database</a>
+            <a href="/institutes/" class="footer-link-item">College Partners</a>
+            <a href="/communities/" class="footer-link-item">Communities</a>
+            <a href="/teams/" class="footer-link-item">Groups &amp; Teams</a>
+            <a href="/leaders/" class="footer-link-item">Leaders Directory</a>
+          </div>
+        </div>
+
+        <div>
+          <div class="footer-heading">Governance</div>
+          <div class="footer-links-list">
+            <a href="/#mission" class="footer-link-item">Our Mission</a>
+            <a href="/#leaders" class="footer-link-item">Top Leaders</a>
+            <a href="/#policies" class="footer-link-item">Editorial Standards</a>
+            <a href="/#policies" class="footer-link-item">Research Integrity</a>
+            <a href="/#policies" class="footer-link-item">Student Safety &amp; Privacy</a>
+            <a href="/#policies" class="footer-link-item">Community Guidelines</a>
+          </div>
+        </div>
+
+        <div>
+          <div class="footer-heading">Access &amp; Support</div>
+          <div class="footer-links-list">
+            <a href="/login.html" class="footer-link-item" style="color:var(--brand-orange); font-weight:600;">Join us &amp; Publish</a>
+            <a href="/#contact" class="footer-link-item">Contact Coordination Desk</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bot-bar">
+        <div>© 2026 The Iteration Lab. Open Educational Research Network. All rights reserved.</div>
+        <div style="font-family:var(--font-mono); font-size:11px; color:#6B7280;">Philosophy: "From Idea to Impact"</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Search Modal -->
+  <div class="modal-backdrop" id="search-modal" role="dialog" aria-modal="true" aria-labelledby="search-modal-title">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3 id="search-modal-title" style="font-family:var(--font-serif); font-size:18px; font-weight:600;">Search The Iteration Lab</h3>
+        <button type="button" id="search-modal-close" style="font-size:20px; color:#6B7280; padding:4px;" aria-label="Close search">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="search-input" class="input-field" placeholder="Search papers, authors, software, mentors..." autocomplete="off">
+        <div id="search-results" style="margin-top:16px; max-height:360px; overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

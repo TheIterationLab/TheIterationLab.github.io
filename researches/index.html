@@ -6,6 +6,20 @@
   <title>Research Archives · The Iteration Lab</title>
   <meta name="description" content="Explore open-access student and educator research papers, abstracts, methodologies, and peer-reviewed publications at The Iteration Lab.">
   <link rel="icon" type="image/png" href="/public/assets/aistudio/iteration-lab-icon-jetspiral_10af4d29.png">
+  <script>
+    (function () {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var routedPath = params.get('__r');
+        if (routedPath && routedPath.charAt(0) === '/' && routedPath.indexOf('//') !== 0) {
+          params.delete('__r');
+          var restQuery = params.toString();
+          var cleanUrl = routedPath + (restQuery ? '?' + restQuery : '') + (window.location.hash || '');
+          window.history.replaceState(null, '', cleanUrl);
+        }
+      } catch (_) {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -169,6 +183,7 @@
             <a href="/students/" class="footer-link-item">Students Database</a>
             <a href="/institutes/" class="footer-link-item">College Partners</a>
             <a href="/communities/" class="footer-link-item">Communities</a>
+            <a href="/teams/" class="footer-link-item">Groups &amp; Teams</a>
             <a href="/leaders/" class="footer-link-item">Leaders Directory</a>
           </div>
         </div>
