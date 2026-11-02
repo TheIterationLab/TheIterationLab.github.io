@@ -1,13 +1,8 @@
 import {
-  RESEARCH_PUBLICATIONS,
-  SOFTWARE_BUILDS,
-  COLLEGE_PARTNERS,
-  TOP_LEADERS,
-  TEACHER_PROFILES,
-  STUDENT_PROFILES,
   LAB_EVENTS,
   POLICIES
 } from './data.js';
+import { normalizeWorkerAssetUrl } from '../assets/js/pdf-viewer.js';
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
@@ -70,9 +65,53 @@ function getInitials(name) {
 }
 
 const UUID_RE_HOME = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-let liveSearchPublications = null;
-let liveSearchSoftwares = null;
+let liveSearchPublications = [];
+let liveSearchSoftwares = [];
+let liveSearchTeachers = [];
+let liveSearchStudents = [];
 let shelfCardNavBound = false;
+let homeInstitutesCachePromise = null;
+
+function refreshShelfArrowsForTrack(track) {
+  if (!track) return;
+  window.requestAnimationFrame(() => {
+    track.dispatchEvent(new Event('scroll'));
+  });
+}
+
+async function fetchHomeInstitutesMap() {
+  if (!homeInstitutesCachePromise) {
+    homeInstitutesCachePromise = (async () => {
+      const map = new Map();
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/institutes?select=eiin,address,profiles(name)&limit=200`,
+          {
+            method: 'GET',
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          }
+        );
+        if (!res.ok) return map;
+        const rows = await res.json();
+        if (Array.isArray(rows)) {
+          rows.forEach((r) => {
+            const eiin = cleanStringField(r.eiin);
+            const prof = extractEmbeddedProfile(r.profiles);
+            const name = prof ? cleanStringField(prof.name) : '';
+            if (eiin) {
+              map.set(eiin, name || `EIIN ${eiin}`);
+            }
+          });
+        }
+      } catch (_) {}
+      return map;
+    })();
+  }
+  return homeInstitutesCachePromise;
+}
 
 function parseHomeStringArray(val) {
   if (Array.isArray(val)) {
@@ -255,34 +294,16 @@ function buildPublicationsDarkCard() {
   `;
 }
 
-function renderFallbackPublications(track) {
-  const sampleIds = ['ILR0001', 'ILR0002', 'ILR0003', 'ILR0004'];
-  const cardsHtml = RESEARCH_PUBLICATIONS.map((item, idx) => {
-    const ilrid = sampleIds[idx] || '';
-    const detailHref = ilrid ? `/researches/${encodeURIComponent(ilrid)}` : '/researches/';
-    return `
-      <article class="shelf-card shelf-card--clickable" role="link" tabindex="0" data-card-href="${esc(detailHref)}" aria-label="${esc(item.title)}">
-        <div>
-          <div class="card-thumb">
-            ${buildResearchSchematicSvg()}
-            <span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>
-          </div>
-          <div class="card-category">${esc(item.category)}</div>
-          <h3 class="card-title">${esc(item.title)}</h3>
-          <p class="card-desc">${esc(item.abstract)}</p>
-        </div>
-        <div>
-          <div class="card-meta">
-            <div><strong>Authors:</strong> ${esc(item.authors)}</div>
-            <div>${esc(item.institution)} · ${esc(item.date)}</div>
-          </div>
-          <a href="${esc(detailHref)}" class="card-link">View in details →</a>
-        </div>
-      </article>
-    `;
-  }).join('');
-
-  track.innerHTML = cardsHtml + buildPublicationsDarkCard();
+function buildEmptyShelfStateCard(title, message) {
+  return `
+    <article class="shelf-card" aria-label="${esc(title)}">
+      <div>
+        <div class="card-category">Live Directory</div>
+        <h3 class="card-title">${esc(title)}</h3>
+        <p class="card-desc">${esc(message)}</p>
+      </div>
+    </article>
+  `;
 }
 
 async function renderPublications() {
@@ -290,8 +311,8 @@ async function renderPublications() {
   if (!track) return;
   bindShelfCardNavigation();
 
-  // Immediate initial render before network resolves
-  renderFallbackPublications(track);
+  track.innerHTML = buildPublicationsDarkCard();
+  refreshShelfArrowsForTrack(track);
 
   try {
     const response = await fetch(
@@ -309,6 +330,12 @@ async function renderPublications() {
     }
     const rows = await response.json();
     if (!Array.isArray(rows) || rows.length === 0) {
+      track.innerHTML =
+        buildEmptyShelfStateCard(
+          'No Research Papers Published Yet',
+          'Published student and faculty research papers will appear here automatically.'
+        ) + buildPublicationsDarkCard();
+      refreshShelfArrowsForTrack(track);
       return;
     }
 
@@ -361,17 +388,11 @@ async function renderPublications() {
             `
           : buildResearchSchematicSvg();
 
-        const sampleBadge =
-          row.is_sample === true
-            ? `<span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>`
-            : '';
-
         return `
           <article class="shelf-card shelf-card--clickable" role="link" tabindex="0" data-card-href="${esc(detailHref)}" aria-label="${esc(title)}">
             <div>
               <div class="card-thumb">
                 ${thumbInner}
-                ${sampleBadge}
               </div>
               <div class="card-category">${esc(category)}</div>
               <h3 class="card-title">${esc(title)}</h3>
@@ -391,8 +412,9 @@ async function renderPublications() {
 
     track.innerHTML = cardsHtml + buildPublicationsDarkCard();
     attachShelfThumbFallbacks(track);
+    refreshShelfArrowsForTrack(track);
   } catch (err) {
-    console.warn('Using fallback publications shelf:', err);
+    console.warn('Publications shelf fetch warning:', err);
   }
 }
 
@@ -417,45 +439,13 @@ function buildSoftwareDarkCard() {
   `;
 }
 
-function renderFallbackSoftware(track) {
-  const sampleIds = ['ILS0001', 'ILS0002', 'ILS0003'];
-  const cardsHtml = SOFTWARE_BUILDS.map((item, idx) => {
-    const ilsid = sampleIds[idx] || '';
-    const detailHref = ilsid ? `/softwares/${encodeURIComponent(ilsid)}` : '/softwares/';
-    return `
-      <article class="shelf-card shelf-card--clickable" role="link" tabindex="0" data-card-href="${esc(detailHref)}" aria-label="${esc(item.name)}">
-        <div>
-          <div class="card-thumb">
-            ${buildSoftwareSchematicSvg()}
-            <span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>
-            <span style="position:absolute; bottom:8px; right:8px; font-size:10px; font-weight:600; background:rgba(0,0,0,0.8); color:#A7F3D0; padding:2px 6px; border-radius:3px;">${esc(item.status)}</span>
-          </div>
-          <div class="card-category">Open Source Build</div>
-          <h3 class="card-title">${esc(item.name)}</h3>
-          <p class="card-desc">${esc(item.description)}</p>
-          <div style="display:flex; flex-wrap:wrap; gap:5px; margin: 8px 0 14px;">
-            ${item.tags.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}
-          </div>
-        </div>
-        <div>
-          <div class="card-meta">
-            <div><strong>Team / Creator:</strong> ${esc(item.team)}</div>
-          </div>
-          <a href="${esc(detailHref)}" class="card-link">View in details →</a>
-        </div>
-      </article>
-    `;
-  }).join('');
-
-  track.innerHTML = cardsHtml + buildSoftwareDarkCard();
-}
-
 async function renderSoftware() {
   const track = document.getElementById('software-track');
   if (!track) return;
   bindShelfCardNavigation();
 
-  renderFallbackSoftware(track);
+  track.innerHTML = buildSoftwareDarkCard();
+  refreshShelfArrowsForTrack(track);
 
   try {
     const response = await fetch(
@@ -473,6 +463,12 @@ async function renderSoftware() {
     }
     const rows = await response.json();
     if (!Array.isArray(rows) || rows.length === 0) {
+      track.innerHTML =
+        buildEmptyShelfStateCard(
+          'No Software Builds Published Yet',
+          'Open-source tools, simulations, and engineering builds from our community will appear here.'
+        ) + buildSoftwareDarkCard();
+      refreshShelfArrowsForTrack(track);
       return;
     }
 
@@ -513,11 +509,6 @@ async function renderSoftware() {
             `
           : buildSoftwareSchematicSvg();
 
-        const sampleBadge =
-          row.is_sample === true
-            ? `<span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>`
-            : '';
-
         const statusBadge = status
           ? `<span style="position:absolute; bottom:8px; right:8px; font-size:10px; font-weight:600; background:rgba(0,0,0,0.8); color:#A7F3D0; padding:2px 6px; border-radius:3px;">${esc(status)}</span>`
           : '';
@@ -527,7 +518,6 @@ async function renderSoftware() {
             <div>
               <div class="card-thumb">
                 ${thumbInner}
-                ${sampleBadge}
                 ${statusBadge}
               </div>
               <div class="card-category">${esc(category)}</div>
@@ -555,45 +545,17 @@ async function renderSoftware() {
 
     track.innerHTML = cardsHtml + buildSoftwareDarkCard();
     attachShelfThumbFallbacks(track);
+    refreshShelfArrowsForTrack(track);
   } catch (err) {
-    console.warn('Using fallback software shelf:', err);
+    console.warn('Software shelf fetch warning:', err);
   }
 }
 
 /* ==========================================================================
-   8. College Partners Shelf
+   8. College Partners Shelf (Live Supabase `institutes`)
    ========================================================================== */
-function renderPartners() {
-  const track = document.getElementById('partners-track');
-  if (!track) return;
-
-  const cardsHtml = COLLEGE_PARTNERS.map(item => `
-    <article class="shelf-card" aria-label="${esc(item.name)}">
-      <div>
-        <div class="card-thumb" style="aspect-ratio: 16/9; background:#FAFBFD;">
-          <div style="font-family:var(--font-serif); font-size:16px; font-weight:700; color:#374151; text-align:center; padding:12px;">
-            ${esc(item.name)}
-          </div>
-          <span style="position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; background:#FEF3C7; color:#92400E; padding:2px 6px; border-radius:3px;">SAMPLE</span>
-        </div>
-        <div style="margin-bottom:8px;">
-          <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; ${item.status.includes('Confirmed') ? 'background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0;' : 'background:#F3F4F6; color:#4B5563; border:1px solid #E5E7EB;'}">
-            ${esc(item.status)}
-          </span>
-        </div>
-        <h3 class="card-title">${esc(item.name)}</h3>
-        <p class="card-desc">${esc(item.description)}</p>
-      </div>
-      <div>
-        <div class="card-meta">
-          <div><strong>Location:</strong> ${esc(item.location)}</div>
-        </div>
-        <a href="#contact" class="card-link">Partner inquiry →</a>
-      </div>
-    </article>
-  `).join('');
-
-  const darkCard = `
+function buildPartnersDarkCard() {
+  return `
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
@@ -608,8 +570,105 @@ function renderPartners() {
       </div>
     </div>
   `;
+}
 
-  track.innerHTML = cardsHtml + darkCard;
+async function renderPartners() {
+  const track = document.getElementById('partners-track');
+  if (!track) return;
+  bindShelfCardNavigation();
+
+  const darkCard = buildPartnersDarkCard();
+  track.innerHTML = darkCard;
+  refreshShelfArrowsForTrack(track);
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/institutes?select=*,profiles(cid,type,slug,name,photo,location,bio)&order=created_at.desc&limit=8`,
+      {
+        method: 'GET',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Institutes fetch failed (${response.status})`);
+    }
+    const rows = await response.json();
+    if (!Array.isArray(rows) || rows.length === 0) {
+      track.innerHTML =
+        buildEmptyShelfStateCard(
+          'Institutional Partners Directory',
+          'Partner schools, colleges, and research clubs joining The Iteration Lab appear directly in this live directory.'
+        ) + darkCard;
+      refreshShelfArrowsForTrack(track);
+      return;
+    }
+
+    const cardsHtml = rows
+      .map((row) => {
+        const prof = extractEmbeddedProfile(row.profiles);
+        const cid = cleanStringField(row.cid || prof?.cid);
+        const name = cleanStringField(prof?.name || row.name) || 'Partner Institute';
+        const eiin = cleanStringField(row.eiin);
+        const location = cleanStringField(row.address || prof?.location) || 'Bangladesh';
+        const desc = cleanStringField(prof?.bio) || 'Registered institutional partner in The Iteration Lab open research network.';
+        const photoSrc = resolveImageSrc(prof?.photo, IMAGE_DIRS.institutes);
+        const profileHref = resolveHomeProfileHref({
+          cid,
+          type: 'I',
+          slug: prof?.slug
+        }) || '/institutes/';
+
+        const thumbMarkup = photoSrc
+          ? `
+              <img class="shelf-thumb-img" src="${esc(photoSrc)}" alt="${esc(name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+              <div data-thumb-fallback hidden style="font-family:var(--font-serif); font-size:16px; font-weight:700; color:#374151; text-align:center; padding:12px;">
+                ${esc(name)}
+              </div>
+            `
+          : `
+              <div style="font-family:var(--font-serif); font-size:16px; font-weight:700; color:#374151; text-align:center; padding:12px;">
+                ${esc(name)}
+              </div>
+            `;
+
+        return `
+          <article class="shelf-card shelf-card--clickable" role="link" tabindex="0" data-card-href="${esc(profileHref)}" aria-label="${esc(name)}">
+            <div>
+              <div class="card-thumb" style="aspect-ratio: 16/9; background:#FAFBFD;">
+                ${thumbMarkup}
+              </div>
+              ${
+                eiin
+                  ? `<div style="margin-bottom:8px;">
+                      <span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:4px; background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0;">
+                        EIIN ${esc(eiin)}
+                      </span>
+                    </div>`
+                  : ''
+              }
+              <h3 class="card-title">${esc(name)}</h3>
+              <p class="card-desc">${esc(desc)}</p>
+            </div>
+            <div>
+              <div class="card-meta">
+                <div><strong>Location:</strong> ${esc(location)}</div>
+              </div>
+              <a href="${esc(profileHref)}" class="card-link">View institute profile →</a>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+
+    track.innerHTML = cardsHtml + darkCard;
+    attachShelfThumbFallbacks(track);
+    refreshShelfArrowsForTrack(track);
+  } catch (err) {
+    console.warn('Institutes shelf fetch warning:', err);
+  }
 }
 
 /* ==========================================================================
@@ -640,7 +699,7 @@ function normalizeSitePathOrUrl(val) {
 }
 
 function resolveImageSrc(val, defaultDir = IMAGE_DIRS.leaders) {
-  const raw = cleanStringField(val).replace(/\\/g, '/');
+  const raw = normalizeWorkerAssetUrl(cleanStringField(val)).replace(/\\/g, '/');
   if (!raw) return '';
   if (/^https?:\/\/\S+$/i.test(raw)) return raw;
   if (raw.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(raw)) return '';
@@ -797,15 +856,7 @@ function parseResponsibilities(val) {
 }
 
 function getFounderPortfolioUrl() {
-  const configured = normalizeExternalUrl(FOUNDER_PORTFOLIO_URL);
-  if (configured) return configured;
-  const f = TOP_LEADERS && TOP_LEADERS.founder;
-  if (!f) return '';
-  if (f.portfolioUrl) return normalizeExternalUrl(f.portfolioUrl);
-  const found = Array.isArray(f.links)
-    ? f.links.find(l => /portfolio/i.test(l.label || ''))
-    : null;
-  return found ? normalizeExternalUrl(found.url) : '';
+  return normalizeExternalUrl(FOUNDER_PORTFOLIO_URL);
 }
 
 let activeExpandedLeaderCard = null;
@@ -1034,7 +1085,7 @@ function renderFounderCardDOM(founderSlot, data, useLocalSrcset) {
   }
 }
 
-function renderLeaderCardsDOM(gridSlot, items, isSampleFallback) {
+function renderLeaderCardsDOM(gridSlot, items) {
   ensureLeaderExpandListeners();
   collapseExpandedLeaderCard();
 
@@ -1099,14 +1150,6 @@ function renderLeaderCardsDOM(gridSlot, items, isSampleFallback) {
       `
       : `<div class="founder-portrait-fallback is-active" aria-hidden="true">${initials}</div>`;
 
-    const sampleBadgeMarkup = isSampleFallback
-      ? `
-        <div class="leader-sample-row">
-          <span class="leader-sample-tag">SAMPLE</span>
-        </div>
-      `
-      : '';
-
     return `
       <article
         class="leader-item-card"
@@ -1148,7 +1191,6 @@ function renderLeaderCardsDOM(gridSlot, items, isSampleFallback) {
             </div>
           </div>
           ${compactText ? `<p class="leader-resp">${esc(compactText)}</p>` : ''}
-          ${sampleBadgeMarkup}
         </div>
 
         <div class="leader-expanded-view">
@@ -1182,7 +1224,6 @@ function renderLeaderCardsDOM(gridSlot, items, isSampleFallback) {
               <a href="${esc(profileHref)}" class="founder-link">Profile ↗</a>
               ${whatsappHref ? `<a href="${esc(whatsappHref)}" class="founder-link" target="_blank" rel="noopener noreferrer">WhatsApp ↗</a>` : ''}
             </div>
-            ${sampleBadgeMarkup}
           </div>
         </div>
       </article>
@@ -1247,37 +1288,6 @@ function renderLeaderCardsDOM(gridSlot, items, isSampleFallback) {
   });
 }
 
-function renderSampleLeadersFallback(founderSlot, gridSlot) {
-  if (founderSlot && TOP_LEADERS.founder) {
-    const f = TOP_LEADERS.founder;
-    renderFounderCardDOM(founderSlot, {
-      cid: f.cid || 'founder',
-      p_link: f.p_link || '',
-      name: f.name,
-      role: f.title,
-      bio: f.bio,
-      responsibilities: f.responsibilities || [],
-      photo: resolveImageSrc(f.photo, IMAGE_DIRS.leaders),
-      photo480: f.photo480 ? resolveImageSrc(f.photo480, IMAGE_DIRS.leaders) : ''
-    }, Boolean(f.photo480));
-  }
-
-  if (gridSlot && Array.isArray(TOP_LEADERS.leaders)) {
-    const sampleItems = TOP_LEADERS.leaders.slice(0, 6).map(l => ({
-      cid: l.id,
-      p_link: l.p_link || '',
-      name: l.name,
-      role: l.position,
-      quote: l.responsibility,
-      bio: l.bio || l.responsibility || '',
-      responsibilities: Array.isArray(l.responsibilities) ? l.responsibilities : [],
-      whatsapp: l.whatsapp || '',
-      photo: resolveImageSrc(l.photo, IMAGE_DIRS.leaders)
-    }));
-    renderLeaderCardsDOM(gridSlot, sampleItems, true);
-  }
-}
-
 async function renderLeaders() {
   const founderSlot = document.getElementById('founder-card-slot');
   const gridSlot = document.getElementById('leaders-grid-slot');
@@ -1339,46 +1349,46 @@ async function renderLeaders() {
         whatsapp: row.whatsapp ? String(row.whatsapp).trim() : '',
         photo: resolveLeaderPhoto(row)
       }));
-      renderLeaderCardsDOM(gridSlot, otherRows, false);
+      renderLeaderCardsDOM(gridSlot, otherRows);
     }
   } catch (err) {
-    console.error(err);
-    renderSampleLeadersFallback(founderSlot, gridSlot);
+    console.warn('Leaders fetch warning:', err);
   }
 }
 
-/* ==========================================================================
-   10. Teacher Profiles Shelf
-   ========================================================================== */
-function renderTeachers() {
-  const track = document.getElementById('teachers-track');
+function attachShelfAvatarFallbacks(track) {
   if (!track) return;
+  track.querySelectorAll('.shelf-member-photo').forEach((img) => {
+    const fallbackEl = img.parentElement?.querySelector('.leader-initials-fallback');
+    attachPhotoFallbackHandler(img, () => {
+      img.hidden = true;
+      if (fallbackEl) fallbackEl.hidden = false;
+    });
+  });
+}
 
-  const cardsHtml = TEACHER_PROFILES.map(item => `
-    <article class="shelf-card" aria-label="${esc(item.name)}">
-      <div>
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-          <div class="leader-avatar" style="width:48px; height:48px; font-size:16px; background:#F8FAFC; border-color:#CBD5E1; color:#0047AB;">
-            ${getInitials(item.name)}
-          </div>
-          <div>
-            <h3 class="card-title" style="margin-bottom:2px;">${esc(item.name)}</h3>
-            <div style="font-size:12px; color:var(--brand-orange); font-weight:600;">${esc(item.designation)}</div>
-          </div>
-        </div>
-        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:10px;"><strong>Institution:</strong> ${esc(item.institution)}</p>
-        <p class="card-desc"><strong>Expertise:</strong> ${esc(item.expertise)}</p>
+function buildShelfAvatarMarkup(name, photoUrl, borderStyle) {
+  const initials = esc(getInitials(name));
+  if (photoUrl) {
+    return `
+      <div class="leader-avatar" style="${borderStyle}">
+        <img class="shelf-member-photo" src="${esc(photoUrl)}" alt="Portrait of ${esc(name)}" width="48" height="48" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+        <span class="leader-initials-fallback" aria-hidden="true" hidden>${initials}</span>
       </div>
-      <div>
-        <div class="card-meta">
-          <div style="font-size:11px; color:#10B981; font-weight:600;">✓ Verified Academic Mentor</div>
-        </div>
-        <button type="button" class="card-link open-profile-btn" data-type="teacher" data-id="${item.id}">View teacher profile →</button>
-      </div>
-    </article>
-  `).join('');
+    `;
+  }
+  return `
+    <div class="leader-avatar" style="${borderStyle}">
+      <span class="leader-initials-fallback" aria-hidden="true">${initials}</span>
+    </div>
+  `;
+}
 
-  const darkCard = `
+/* ==========================================================================
+   10. Teacher Profiles Shelf (Live Supabase `teachers` + `profiles`)
+   ========================================================================== */
+function buildTeachersDarkCard() {
+  return `
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
@@ -1393,42 +1403,165 @@ function renderTeachers() {
       </div>
     </div>
   `;
+}
 
-  track.innerHTML = cardsHtml + darkCard;
+async function renderTeachers() {
+  const track = document.getElementById('teachers-track');
+  if (!track) return;
+  bindShelfCardNavigation();
+
+  const darkCard = buildTeachersDarkCard();
+  track.innerHTML = darkCard;
+  refreshShelfArrowsForTrack(track);
+
+  try {
+    const headers = {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+    };
+
+    const [teachersRes, profsRes, institutesMap] = await Promise.all([
+      fetch(
+        `${SUPABASE_URL}/rest/v1/teachers?select=*,profiles(cid,type,slug,name,photo,profession,institution_override,location,research_interests,q1,bio,verified)&order=created_at.desc&limit=10`,
+        { method: 'GET', headers }
+      ),
+      fetch(
+        `${SUPABASE_URL}/rest/v1/profiles?select=cid,type,slug,name,photo,profession,institution_override,location,research_interests,q1,bio,verified&type=eq.T&limit=10`,
+        { method: 'GET', headers }
+      ),
+      fetchHomeInstitutesMap()
+    ]);
+
+    const teacherRows = teachersRes.ok ? await teachersRes.json() : [];
+    const profRows = profsRes.ok ? await profsRes.json() : [];
+
+    const mergedMap = new Map();
+    if (Array.isArray(teacherRows)) {
+      teacherRows.forEach((row) => {
+        const prof = extractEmbeddedProfile(row.profiles);
+        const cid = cleanStringField(row.cid || prof?.cid);
+        if (!cid) return;
+        mergedMap.set(cid.toLowerCase(), { roleRow: row, prof: prof || { cid, type: 'T' } });
+      });
+    }
+    if (Array.isArray(profRows)) {
+      profRows.forEach((p) => {
+        const cid = cleanStringField(p.cid);
+        if (!cid) return;
+        const key = cid.toLowerCase();
+        if (!mergedMap.has(key)) {
+          mergedMap.set(key, { roleRow: {}, prof: p });
+        } else {
+          mergedMap.get(key).prof = { ...mergedMap.get(key).prof, ...p };
+        }
+      });
+    }
+
+    const items = Array.from(mergedMap.values());
+    if (items.length === 0) {
+      track.innerHTML =
+        buildEmptyShelfStateCard(
+          'No Teacher Profiles Yet',
+          'Verified secondary and university educators joining The Iteration Lab appear directly in this directory.'
+        ) + darkCard;
+      refreshShelfArrowsForTrack(track);
+      return;
+    }
+
+    liveSearchTeachers = items.map(({ roleRow, prof }) => {
+      const cid = cleanStringField(prof?.cid || roleRow?.cid);
+      const name = cleanStringField(prof?.name) || 'Academic Mentor';
+      const eiin = cleanStringField(roleRow?.eiin);
+      const institution =
+        cleanStringField(prof?.institution_override) ||
+        (eiin ? institutesMap.get(eiin) || `EIIN ${eiin}` : '') ||
+        cleanStringField(prof?.location);
+      const expertise =
+        cleanStringField(roleRow?.department) ||
+        cleanStringField(prof?.research_interests) ||
+        cleanStringField(prof?.bio);
+      return {
+        name,
+        institution,
+        expertise,
+        href: resolveHomeProfileHref({ cid, type: 'T', slug: prof?.slug }) || '/teachers/'
+      };
+    });
+
+    const cardsHtml = items
+      .map(({ roleRow, prof }) => {
+        const cid = cleanStringField(prof?.cid || roleRow?.cid);
+        const name = cleanStringField(prof?.name) || 'Academic Mentor';
+        const designation =
+          cleanStringField(roleRow?.designation) ||
+          cleanStringField(prof?.profession) ||
+          'Faculty Mentor';
+        const eiin = cleanStringField(roleRow?.eiin);
+        const institution =
+          cleanStringField(prof?.institution_override) ||
+          (eiin ? institutesMap.get(eiin) || `EIIN ${eiin}` : '') ||
+          cleanStringField(prof?.location);
+        const expertise =
+          cleanStringField(roleRow?.department) ||
+          cleanStringField(prof?.research_interests) ||
+          cleanStringField(prof?.bio) ||
+          cleanStringField(prof?.q1);
+        const photoSrc = resolveImageSrc(prof?.photo, IMAGE_DIRS.teachers);
+        const isVerified = prof?.verified === 1 || prof?.verified === true || prof?.verified === '1';
+        const profileHref = resolveHomeProfileHref({ cid, type: 'T', slug: prof?.slug }) || '/teachers/';
+        const avatarHtml = buildShelfAvatarMarkup(
+          name,
+          photoSrc,
+          'width:48px; height:48px; font-size:16px; background:#F8FAFC; border-color:#CBD5E1; color:#0047AB;'
+        );
+
+        return `
+          <article class="shelf-card shelf-card--clickable" role="link" tabindex="0" data-card-href="${esc(profileHref)}" aria-label="${esc(name)}">
+            <div>
+              <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                ${avatarHtml}
+                <div style="min-width:0;">
+                  <h3 class="card-title" style="margin-bottom:2px;">${esc(name)}</h3>
+                  <div style="font-size:12px; color:var(--brand-orange); font-weight:600;">${esc(designation)}</div>
+                </div>
+              </div>
+              ${
+                institution
+                  ? `<p style="font-size:13px; color:var(--text-secondary); margin-bottom:10px;"><strong>Institution:</strong> ${esc(institution)}</p>`
+                  : ''
+              }
+              ${
+                expertise
+                  ? `<p class="card-desc"><strong>Focus:</strong> ${esc(expertise)}</p>`
+                  : `<p class="card-desc">Academic mentorship, peer evaluation, and research guidance.</p>`
+              }
+            </div>
+            <div>
+              <div class="card-meta">
+                <div style="font-size:11px; color:${isVerified ? '#10B981' : 'var(--text-muted)'}; font-weight:600;">
+                  ${isVerified ? '✓ Verified Academic Mentor' : '● Academic Educator'}
+                </div>
+              </div>
+              <a href="${esc(profileHref)}" class="card-link">View teacher profile →</a>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+
+    track.innerHTML = cardsHtml + darkCard;
+    attachShelfAvatarFallbacks(track);
+    refreshShelfArrowsForTrack(track);
+  } catch (err) {
+    console.warn('Teachers shelf fetch warning:', err);
+  }
 }
 
 /* ==========================================================================
-   11. Student Profiles Shelf
+   11. Student Profiles Shelf (Live Supabase `students` + `profiles`)
    ========================================================================== */
-function renderStudents() {
-  const track = document.getElementById('students-track');
-  if (!track) return;
-
-  const cardsHtml = STUDENT_PROFILES.map(item => `
-    <article class="shelf-card" aria-label="${esc(item.name)}">
-      <div>
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-          <div class="leader-avatar" style="width:48px; height:48px; font-size:16px; background:#F8FAFC; border-color:#CBD5E1; color:#111827;">
-            ${getInitials(item.name)}
-          </div>
-          <div>
-            <h3 class="card-title" style="margin-bottom:2px;">${esc(item.name)}</h3>
-            <div style="font-size:12px; color:var(--text-muted); font-weight:500;">${esc(item.affiliation)}</div>
-          </div>
-        </div>
-        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;"><strong>Interests:</strong> ${esc(item.interests)}</p>
-        <p class="card-desc"><strong>Featured Work:</strong> ${esc(item.featuredWork)}</p>
-      </div>
-      <div>
-        <div class="card-meta">
-          <div style="font-size:11px; color:#0047AB; font-weight:600;">● Student Researcher & Author</div>
-        </div>
-        <button type="button" class="card-link open-profile-btn" data-type="student" data-id="${item.id}">View student profile →</button>
-      </div>
-    </article>
-  `).join('');
-
-  const darkCard = `
+function buildStudentsDarkCard() {
+  return `
     <div class="shelf-card-dark">
       <div class="shelf-dark-top">
         <div class="shelf-dark-icon">
@@ -1443,8 +1576,154 @@ function renderStudents() {
       </div>
     </div>
   `;
+}
 
-  track.innerHTML = cardsHtml + darkCard;
+async function renderStudents() {
+  const track = document.getElementById('students-track');
+  if (!track) return;
+  bindShelfCardNavigation();
+
+  const darkCard = buildStudentsDarkCard();
+  track.innerHTML = darkCard;
+  refreshShelfArrowsForTrack(track);
+
+  try {
+    const headers = {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+    };
+
+    const [studentsRes, profsRes, institutesMap] = await Promise.all([
+      fetch(
+        `${SUPABASE_URL}/rest/v1/students?select=*,profiles(cid,type,slug,name,photo,profession,institution_override,location,research_interests,q1,bio,verified)&order=created_at.desc&limit=12`,
+        { method: 'GET', headers }
+      ),
+      fetch(
+        `${SUPABASE_URL}/rest/v1/profiles?select=cid,type,slug,name,photo,profession,institution_override,location,research_interests,q1,bio,verified&type=eq.S&limit=12`,
+        { method: 'GET', headers }
+      ),
+      fetchHomeInstitutesMap()
+    ]);
+
+    const studentRows = studentsRes.ok ? await studentsRes.json() : [];
+    const profRows = profsRes.ok ? await profsRes.json() : [];
+
+    const mergedMap = new Map();
+    if (Array.isArray(studentRows)) {
+      studentRows.forEach((row) => {
+        const prof = extractEmbeddedProfile(row.profiles);
+        const cid = cleanStringField(row.cid || prof?.cid);
+        if (!cid) return;
+        mergedMap.set(cid.toLowerCase(), { roleRow: row, prof: prof || { cid, type: 'S' } });
+      });
+    }
+    if (Array.isArray(profRows)) {
+      profRows.forEach((p) => {
+        const cid = cleanStringField(p.cid);
+        if (!cid) return;
+        const key = cid.toLowerCase();
+        if (!mergedMap.has(key)) {
+          mergedMap.set(key, { roleRow: {}, prof: p });
+        } else {
+          mergedMap.get(key).prof = { ...mergedMap.get(key).prof, ...p };
+        }
+      });
+    }
+
+    // Show profiles with photos/richer info first while preserving active database order
+    const items = Array.from(mergedMap.values()).sort((a, b) => {
+      const score = (entry) =>
+        (cleanStringField(entry.prof?.photo) ? 2 : 0) +
+        (cleanStringField(entry.prof?.research_interests || entry.prof?.bio) ? 1 : 0);
+      return score(b) - score(a);
+    });
+
+    if (items.length === 0) {
+      track.innerHTML =
+        buildEmptyShelfStateCard(
+          'No Student Profiles Yet',
+          'Student researchers, builders, and authors registered on the platform appear here.'
+        ) + darkCard;
+      refreshShelfArrowsForTrack(track);
+      return;
+    }
+
+    liveSearchStudents = items.map(({ roleRow, prof }) => {
+      const cid = cleanStringField(prof?.cid || roleRow?.cid);
+      const name = cleanStringField(prof?.name) || 'Student Researcher';
+      const eiin = cleanStringField(roleRow?.eiin);
+      const affiliation =
+        cleanStringField(prof?.institution_override) ||
+        (eiin ? institutesMap.get(eiin) || `EIIN ${eiin}` : '') ||
+        cleanStringField(prof?.profession) ||
+        cleanStringField(prof?.location);
+      const interests =
+        cleanStringField(prof?.research_interests) ||
+        cleanStringField(prof?.bio) ||
+        cleanStringField(prof?.q1);
+      return {
+        name,
+        affiliation,
+        interests,
+        href: resolveHomeProfileHref({ cid, type: 'S', slug: prof?.slug }) || '/students/'
+      };
+    });
+
+    const cardsHtml = items
+      .map(({ roleRow, prof }) => {
+        const cid = cleanStringField(prof?.cid || roleRow?.cid);
+        const name = cleanStringField(prof?.name) || 'Student Researcher';
+        const eiin = cleanStringField(roleRow?.eiin);
+        const affiliation =
+          cleanStringField(prof?.institution_override) ||
+          (eiin ? institutesMap.get(eiin) || `EIIN ${eiin}` : '') ||
+          cleanStringField(prof?.profession) ||
+          cleanStringField(prof?.location) ||
+          'Student Member';
+        const interests = cleanStringField(prof?.research_interests);
+        const summary = cleanStringField(prof?.bio) || cleanStringField(prof?.q1);
+        const photoSrc = resolveImageSrc(prof?.photo, IMAGE_DIRS.students);
+        const profileHref = resolveHomeProfileHref({ cid, type: 'S', slug: prof?.slug }) || '/students/';
+        const avatarHtml = buildShelfAvatarMarkup(
+          name,
+          photoSrc,
+          'width:48px; height:48px; font-size:16px; background:#F8FAFC; border-color:#CBD5E1; color:#111827;'
+        );
+
+        return `
+          <article class="shelf-card shelf-card--clickable" role="link" tabindex="0" data-card-href="${esc(profileHref)}" aria-label="${esc(name)}">
+            <div>
+              <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                ${avatarHtml}
+                <div style="min-width:0;">
+                  <h3 class="card-title" style="margin-bottom:2px;">${esc(name)}</h3>
+                  <div style="font-size:12px; color:var(--text-muted); font-weight:500;">${esc(affiliation)}</div>
+                </div>
+              </div>
+              ${
+                interests
+                  ? `<p style="font-size:13px; color:var(--text-secondary); margin-bottom:8px;"><strong>Interests:</strong> ${esc(interests)}</p>`
+                  : ''
+              }
+              <p class="card-desc">${esc(summary || 'Active student member publishing open research and collaborative engineering projects.')}</p>
+            </div>
+            <div>
+              <div class="card-meta">
+                <div style="font-size:11px; color:#0047AB; font-weight:600;">● Student Researcher & Author</div>
+              </div>
+              <a href="${esc(profileHref)}" class="card-link">View student profile →</a>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+
+    track.innerHTML = cardsHtml + darkCard;
+    attachShelfAvatarFallbacks(track);
+    refreshShelfArrowsForTrack(track);
+  } catch (err) {
+    console.warn('Students shelf fetch warning:', err);
+  }
 }
 
 /* ==========================================================================
@@ -1774,42 +2053,30 @@ function initSearchModal() {
       return;
     }
 
-    const pubSource =
-      Array.isArray(liveSearchPublications) && liveSearchPublications.length > 0
-        ? liveSearchPublications
-        : RESEARCH_PUBLICATIONS.map((p, idx) => ({
-            ilrid: `ILR000${idx + 1}`,
-            title: p.title,
-            abstract: p.abstract,
-            authors: p.authors,
-            date: p.date,
-            href: `/researches/ILR000${idx + 1}`
-          }));
-
-    const swSource =
-      Array.isArray(liveSearchSoftwares) && liveSearchSoftwares.length > 0
-        ? liveSearchSoftwares
-        : SOFTWARE_BUILDS.map((s, idx) => ({
-            ilsid: `ILS000${idx + 1}`,
-            name: s.name,
-            description: s.description,
-            href: `/softwares/ILS000${idx + 1}`
-          }));
-
-    const matchedPubs = pubSource.filter(
+    const matchedPubs = liveSearchPublications.filter(
       (p) =>
         p.title.toLowerCase().includes(q) ||
         (p.abstract || '').toLowerCase().includes(q) ||
+        (p.authors || '').toLowerCase().includes(q) ||
         (p.ilrid || '').toLowerCase().includes(q)
     );
-    const matchedSw = swSource.filter(
+    const matchedSw = liveSearchSoftwares.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
         (s.description || '').toLowerCase().includes(q) ||
         (s.ilsid || '').toLowerCase().includes(q)
     );
-    const matchedStudents = STUDENT_PROFILES.filter(
-      (st) => st.name.toLowerCase().includes(q) || st.interests.toLowerCase().includes(q)
+    const matchedTeachers = liveSearchTeachers.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        (t.institution || '').toLowerCase().includes(q) ||
+        (t.expertise || '').toLowerCase().includes(q)
+    );
+    const matchedStudents = liveSearchStudents.filter(
+      (st) =>
+        st.name.toLowerCase().includes(q) ||
+        (st.affiliation || '').toLowerCase().includes(q) ||
+        (st.interests || '').toLowerCase().includes(q)
     );
 
     let html = '';
@@ -1838,13 +2105,25 @@ function initSearchModal() {
       });
     }
 
+    if (matchedTeachers.length) {
+      html += `<div style="font-family:var(--font-mono); font-size:11px; font-weight:700; color:#059669; text-transform:uppercase; margin:14px 0 4px;">Teachers</div>`;
+      matchedTeachers.forEach((t) => {
+        html += `
+          <a href="${esc(t.href || '/teachers/')}" class="search-result-link">
+            <div style="font-size:14px; font-weight:700; color:var(--text-main);">${esc(t.name)}</div>
+            <div style="font-size:12px; color:var(--text-secondary);">${esc([t.institution, t.expertise].filter(Boolean).join(' · ') || 'View teacher profile →')}</div>
+          </a>
+        `;
+      });
+    }
+
     if (matchedStudents.length) {
       html += `<div style="font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin:14px 0 4px;">Students</div>`;
       matchedStudents.forEach((st) => {
         html += `
-          <a href="/students/" class="search-result-link">
+          <a href="${esc(st.href || '/students/')}" class="search-result-link">
             <div style="font-size:14px; font-weight:700; color:var(--text-main);">${esc(st.name)}</div>
-            <div style="font-size:12px; color:var(--text-secondary);">${esc(st.interests)}</div>
+            <div style="font-size:12px; color:var(--text-secondary);">${esc([st.affiliation, st.interests].filter(Boolean).join(' · ') || 'View student profile →')}</div>
           </a>
         `;
       });
@@ -1859,21 +2138,12 @@ function initSearchModal() {
 }
 
 /* ==========================================================================
-   Detail Reading Modal (Teacher/Student preview cards)
+   Detail Reading Modal (Close handlers for #detail-modal if opened)
    ========================================================================== */
 function initDetailModal() {
   const modal = document.getElementById('detail-modal');
   const closeBtn = document.getElementById('detail-modal-close');
-  const titleEl = document.getElementById('detail-title');
-  const bodyEl = document.getElementById('detail-body');
-
-  if (!modal || !closeBtn || !titleEl || !bodyEl) return;
-
-  const openDetail = (title, contentHtml) => {
-    titleEl.textContent = title;
-    bodyEl.innerHTML = contentHtml;
-    modal.classList.add('open');
-  };
+  if (!modal || !closeBtn) return;
 
   const closeDetail = () => {
     modal.classList.remove('open');
@@ -1886,36 +2156,5 @@ function initDetailModal() {
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal.classList.contains('open')) closeDetail();
-  });
-
-  document.addEventListener('click', (e) => {
-    const profBtn = e.target.closest('.open-profile-btn');
-    if (profBtn) {
-      const type = profBtn.getAttribute('data-type');
-      const id = profBtn.getAttribute('data-id');
-      const list = type === 'teacher' ? TEACHER_PROFILES : STUDENT_PROFILES;
-      const item = list.find(x => x.id === id);
-      if (item) {
-        openDetail(item.name, `
-          <div style="display:flex; flex-direction:column; gap:14px;">
-            <div style="font-size:14px; color:var(--brand-orange); font-weight:600;">
-              ${type === 'teacher' ? esc(item.designation) : esc(item.affiliation)}
-            </div>
-            <div style="font-size:14px; color:var(--text-secondary);">
-              ${type === 'teacher' ? `<strong>Institution:</strong> ${esc(item.institution)}` : `<strong>Research Interests:</strong> ${esc(item.interests)}`}
-            </div>
-            <div style="font-size:14px; color:var(--text-secondary);">
-              ${type === 'teacher' ? `<strong>Areas of Expertise:</strong> ${esc(item.expertise)}` : `<strong>Featured Work:</strong> ${esc(item.featuredWork)}`}
-            </div>
-            <div style="font-size:12px; color:#10B981; font-weight:600; margin-top:8px;">
-              ✓ Verified in The Iteration Lab Academic Directory
-            </div>
-            <div style="margin-top:8px;">
-              <a href="${type === 'teacher' ? '/teachers/' : '/students/'}" class="btn btn-orange" style="width:fit-content;">Open Directory →</a>
-            </div>
-          </div>
-        `);
-      }
-    }
   });
 }

@@ -20,6 +20,11 @@ import {
   FOUNDER_LEADER_CID,
   IMAGE_DIRS
 } from '../../js/config.js';
+import {
+  normalizeWorkerAssetUrl,
+  isPdfUrl,
+  bindPdfPreviewTrigger
+} from './pdf-viewer.js';
 
 const GH_OWNER = 'TheIterationLab';
 const GH_REPO = 'papers';
@@ -701,7 +706,7 @@ function resolveDefaultImageDirForType(accountType) {
 }
 
 function resolveImageSrc(val, defaultDir = IMAGE_DIRS.students) {
-  const raw = cleanText(val).replace(/\\/g, '/');
+  const raw = normalizeWorkerAssetUrl(cleanText(val)).replace(/\\/g, '/');
   if (!raw) return '';
   if (/^data:image\//i.test(raw)) return raw;
   if (/^https?:\/\/\S+$/i.test(raw)) return raw;
@@ -1196,8 +1201,8 @@ function mapResearchRowToCard(row) {
     archiveUrl,
     linkLabel: 'Open Research Page →',
     linkUrl: archiveUrl,
-    secondaryLinkLabel: hasExternalPaper ? 'PDF ↗' : null,
-    secondaryLinkUrl: hasExternalPaper ? paperUrl : null
+    secondaryLinkLabel: hasExternalPaper ? (isPdfUrl(paperUrl) ? 'Read PDF' : 'PDF ↗') : null,
+    secondaryLinkUrl: hasExternalPaper ? normalizeWorkerAssetUrl(paperUrl) : null
   };
 }
 
@@ -2565,22 +2570,30 @@ function renderStackedSection(sectionKey, stageId, counterId, singularNoun, empt
       if (item.secondaryLinkUrl) {
         const extLink = document.createElement('a');
         extLink.className = 'prof-card-link';
-        extLink.href = item.secondaryLinkUrl;
-        extLink.target = '_blank';
-        extLink.rel = 'noopener noreferrer';
         extLink.textContent = item.secondaryLinkLabel || 'Open ↗';
+        if (isPdfUrl(item.secondaryLinkUrl)) {
+          bindPdfPreviewTrigger(extLink, item.secondaryLinkUrl, item.title || 'Document Preview');
+        } else {
+          extLink.href = item.secondaryLinkUrl;
+          extLink.target = '_blank';
+          extLink.rel = 'noopener noreferrer';
+        }
         linksWrap.appendChild(extLink);
       }
     } else {
       if (item.linkUrl) {
         const directLink = document.createElement('a');
         directLink.className = 'prof-card-link';
-        directLink.href = item.linkUrl;
-        if (isHttpUrl(item.linkUrl)) {
-          directLink.target = '_blank';
-          directLink.rel = 'noopener noreferrer';
-        }
         directLink.textContent = item.linkLabel || 'Open Link ↗';
+        if (isPdfUrl(item.linkUrl)) {
+          bindPdfPreviewTrigger(directLink, item.linkUrl, item.title || 'Document Preview');
+        } else {
+          directLink.href = item.linkUrl;
+          if (isHttpUrl(item.linkUrl)) {
+            directLink.target = '_blank';
+            directLink.rel = 'noopener noreferrer';
+          }
+        }
         linksWrap.appendChild(directLink);
       }
 
@@ -3001,12 +3014,16 @@ function openItemReaderModal(item, kindLabel) {
   if (item.linkUrl) {
     const actionLink = document.createElement('a');
     actionLink.className = 'btn btn-orange';
-    actionLink.href = item.linkUrl;
-    if (isHttpUrl(item.linkUrl)) {
-      actionLink.target = '_blank';
-      actionLink.rel = 'noopener noreferrer';
-    }
     actionLink.textContent = item.linkLabel || 'Open Link ↗';
+    if (isPdfUrl(item.linkUrl)) {
+      bindPdfPreviewTrigger(actionLink, item.linkUrl, item.title || kindLabel);
+    } else {
+      actionLink.href = item.linkUrl;
+      if (isHttpUrl(item.linkUrl)) {
+        actionLink.target = '_blank';
+        actionLink.rel = 'noopener noreferrer';
+      }
+    }
     foot.appendChild(actionLink);
   }
 

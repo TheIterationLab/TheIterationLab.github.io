@@ -18,6 +18,11 @@ import {
   LEADER_APPLICATION_WHATSAPP_URL,
   IMAGE_DIRS
 } from '../../js/config.js';
+import {
+  normalizeWorkerAssetUrl,
+  isPdfUrl,
+  bindPdfPreviewTrigger
+} from './pdf-viewer.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -182,7 +187,7 @@ function isHttpUrl(val) {
 }
 
 export function resolveImageSrc(val, defaultDir = '') {
-  const raw = cleanText(val).replace(/\\/g, '/');
+  const raw = normalizeWorkerAssetUrl(cleanText(val)).replace(/\\/g, '/');
   if (!raw) return '';
   if (/^https?:\/\/\S+$/i.test(raw)) return raw;
   if (raw.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(raw)) return '';
@@ -1115,10 +1120,8 @@ function renderResearchesList(container, rows, profilesMap) {
       actions.appendChild(detBtn);
     }
     if (isHttpUrl(paperUrl)) {
-      const readBtn = el('a', 'dir-btn dir-btn-outline', 'PDF ↗');
-      readBtn.href = paperUrl;
-      readBtn.target = '_blank';
-      readBtn.rel = 'noopener noreferrer';
+      const readBtn = el('a', 'dir-btn dir-btn-outline', 'Read PDF');
+      bindPdfPreviewTrigger(readBtn, paperUrl, title);
       actions.appendChild(readBtn);
     }
     body.appendChild(actions);
@@ -1232,10 +1235,15 @@ function renderSoftwaresList(container, rows, profilesMap) {
       actions.appendChild(detBtn);
     }
     if (isHttpUrl(openUrl)) {
-      const openBtn = el('a', 'dir-btn dir-btn-outline', 'Open ↗');
-      openBtn.href = openUrl;
-      openBtn.target = '_blank';
-      openBtn.rel = 'noopener noreferrer';
+      const isPdf = isPdfUrl(openUrl);
+      const openBtn = el('a', 'dir-btn dir-btn-outline', isPdf ? 'Read PDF' : 'Open ↗');
+      if (isPdf) {
+        bindPdfPreviewTrigger(openBtn, openUrl, name);
+      } else {
+        openBtn.href = openUrl;
+        openBtn.target = '_blank';
+        openBtn.rel = 'noopener noreferrer';
+      }
       actions.appendChild(openBtn);
     }
     if (isHttpUrl(repoUrl)) {
@@ -1752,12 +1760,24 @@ function renderResearchDetail(container, row, cfg, profilesMap) {
   endBar.appendChild(endCopy);
 
   if (isHttpUrl(paperUrl)) {
+    const cleanPaperUrl = normalizeWorkerAssetUrl(paperUrl);
     const endActions = el('div', 'dir-end-cta-actions');
-    const pdfBtn = el('a', 'dir-btn dir-btn-primary dir-end-cta-btn', 'View Full Paper (PDF) ↗');
-    pdfBtn.href = paperUrl;
-    pdfBtn.target = '_blank';
-    pdfBtn.rel = 'noopener noreferrer';
-    endActions.appendChild(pdfBtn);
+    const pdfBtn = el('a', 'dir-btn dir-btn-primary dir-end-cta-btn', 'View Full Paper (PDF)');
+    if (isPdfUrl(cleanPaperUrl)) {
+      bindPdfPreviewTrigger(pdfBtn, cleanPaperUrl, `${ilrid ? `${ilrid} · ` : ''}${title}`);
+      endActions.appendChild(pdfBtn);
+
+      const dlBtn = el('a', 'dir-btn dir-btn-outline', 'Download PDF ↓');
+      dlBtn.href = cleanPaperUrl;
+      dlBtn.target = '_blank';
+      dlBtn.rel = 'noopener noreferrer';
+      endActions.appendChild(dlBtn);
+    } else {
+      pdfBtn.href = cleanPaperUrl;
+      pdfBtn.target = '_blank';
+      pdfBtn.rel = 'noopener noreferrer';
+      endActions.appendChild(pdfBtn);
+    }
     endBar.appendChild(endActions);
   }
   card.appendChild(endBar);
@@ -1898,11 +1918,28 @@ function renderSoftwareDetail(container, row, cfg, profilesMap) {
   if (isHttpUrl(openUrl) || isHttpUrl(repoUrl)) {
     const endActions = el('div', 'dir-end-cta-actions');
     if (isHttpUrl(openUrl)) {
-      const openBtn = el('a', 'dir-btn dir-btn-primary dir-end-cta-btn', 'Open Software ↗');
-      openBtn.href = openUrl;
-      openBtn.target = '_blank';
-      openBtn.rel = 'noopener noreferrer';
-      endActions.appendChild(openBtn);
+      const cleanOpenUrl = normalizeWorkerAssetUrl(openUrl);
+      const isPdf = isPdfUrl(cleanOpenUrl);
+      const openBtn = el(
+        'a',
+        'dir-btn dir-btn-primary dir-end-cta-btn',
+        isPdf ? 'View Software Document (PDF)' : 'Open Software ↗'
+      );
+      if (isPdf) {
+        bindPdfPreviewTrigger(openBtn, cleanOpenUrl, `${ilsid ? `${ilsid} · ` : ''}${name}`);
+        endActions.appendChild(openBtn);
+
+        const dlBtn = el('a', 'dir-btn dir-btn-outline', 'Download PDF ↓');
+        dlBtn.href = cleanOpenUrl;
+        dlBtn.target = '_blank';
+        dlBtn.rel = 'noopener noreferrer';
+        endActions.appendChild(dlBtn);
+      } else {
+        openBtn.href = cleanOpenUrl;
+        openBtn.target = '_blank';
+        openBtn.rel = 'noopener noreferrer';
+        endActions.appendChild(openBtn);
+      }
     }
     if (isHttpUrl(repoUrl)) {
       const srcBtn = el(
