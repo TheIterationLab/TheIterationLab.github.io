@@ -1247,9 +1247,212 @@ function updateDerivedResearchCount() {
   el.textContent = `${String(count).padStart(2, '0')} ${count === 1 ? 'work' : 'works'}`;
 }
 
+function isReferredByUnset(rawVal) {
+  if (rawVal === null || rawVal === undefined) return true;
+  const s = String(rawVal).trim();
+  return !s || s === '0' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined';
+}
+
+function normalizeAccountPhoneForReferral(rawPhone) {
+  let digits = String(rawPhone || '').replace(/\D/g, '');
+  if (digits.startsWith('880')) {
+    digits = digits.slice(3);
+  }
+  if (digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  if (!/^1[3-9]\d{8}$/.test(digits)) {
+    return {
+      valid: false,
+      core10: '',
+      local: '',
+      error: 'Enter a valid account phone number, like 01XXXXXXXXX.'
+    };
+  }
+  return {
+    valid: true,
+    core10: digits,
+    local: `0${digits}`,
+    error: ''
+  };
+}
+
+function populateReferralSection() {
+  const p = state.profile;
+  if (!p) return;
+
+  const input = document.getElementById('f-referred_by');
+  const submitBtn = document.getElementById('submit-referred-by-btn');
+  const badge = document.getElementById('referred-by-badge');
+  const desc = document.getElementById('referred-by-desc');
+  const totalEl = document.getElementById('ro-total-referred');
+
+  if (totalEl) {
+    const count = Math.max(0, Number(p.total_referred ?? 0) || 0);
+    totalEl.textContent = String(count);
+  }
+
+  setFieldError('referred_by', '');
+
+  const unset = isReferredByUnset(p.referred_by);
+  if (unset) {
+    if (input) {
+      input.value = '';
+      input.disabled = false;
+      input.readOnly = false;
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit';
+    }
+    if (badge) {
+      badge.dataset.locked = 'false';
+      badge.textContent = 'One-time edit';
+    }
+    if (desc) {
+      desc.textContent =
+        'Enter the account phone number of the member who referred you. This can be submitted only once.';
+    }
+  } else {
+    const rawSaved = cleanText(p.referred_by);
+    const parsed = normalizeAccountPhoneForReferral(rawSaved);
+    const displayPhone = parsed.valid ? parsed.local : rawSaved;
+
+    if (input) {
+      input.value = displayPhone;
+      input.disabled = true;
+      input.readOnly = true;
+    }
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitted ✓';
+    }
+    if (badge) {
+      badge.dataset.locked = 'true';
+      badge.textContent = 'Locked · Submitted';
+    }
+    if (desc) {
+      desc.textContent =
+        'Your referrer phone number has been recorded and cannot be changed again.';
+    }
+  }
+}
+
+async function handleReferralSubmit(e) {
+  if (e) e.preventDefault();
+  if (!state.profile || !state.ownerCid) return;
+
+  const input = document.getElementById('f-referred_by');
+  const submitBtn = document.getElementById('submit-referred-by-btn');
+  if (!input || !submitBtn) return;
+
+  if (!isReferredByUnset(state.profile.referred_by)) {
+    populateReferralSection();
+    setSectionMessage(
+      'msg-referral',
+      'error',
+      'You have already submitted a referrer and cannot change it again.'
+    );
+    return;
+  }
+
+  const phoneRes = normalizeAccountPhoneForReferral(input.value);
+  if (!phoneRes.valid) {
+    setFieldError('referred_by', phoneRes.error);
+    setSectionMessage('msg-referral', '', '');
+    input.focus();
+    return;
+  }
+
+  const ownPhoneRes = normalizeAccountPhoneForReferral(state.session?.user?.phone || '');
+  if (ownPhoneRes.valid && ownPhoneRes.core10 === phoneRes.core10) {
+    setFieldError('referred_by', 'You cannot enter your own account phone number.');
+    setSectionMessage('msg-referral', '', '');
+    input.focus();
+    return;
+  }
+
+  const client = getSupabaseClient();
+  if (!client) return;
+
+  setFieldError('referred_by', '');
+  setSectionMessage('msg-referral', '', 'Verifying account and saving referral…');
+  input.disabled = true;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Submitting…';
+  beginFlight('Saving referral…');
+
+  const { data, error } = await client.rpc('submit_referral', {
+    p_phone: phoneRes.local
+  });
+
+  if (error) {
+    const code = String(error.code || '');
+    const rawMsg = cleanText(error.message || error.details || '');
+
+    if (code === 'PGRST202' || /submit_referral/i.test(rawMsg)) {
+      input.disabled = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit';
+      setSectionMessage(
+        'msg-referral',
+        'error',
+        'Referral database setup is missing. Run the SQL migration in Supabase to create referred_by, total_referred, and submit_referral.'
+      );
+      endFlight(false, 'Saved', 'Could not save');
+      return;
+    }
+
+    if (/already submitted|only be (set|changed) once/i.test(rawMsg)) {
+      const fresh = await client
+        .from('profiles')
+        .select('referred_by,total_referred')
+        .eq('cid', state.ownerCid)
+        .maybeSingle();
+      if (fresh?.data) {
+        state.profile.referred_by = fresh.data.referred_by;
+        state.profile.total_referred = fresh.data.total_referred;
+      }
+      markDirty('profiles.referred_by', false);
+      populateReferralSection();
+      setSectionMessage('msg-referral', 'error', rawMsg || 'Referral was already submitted.');
+      endFlight(false, 'Saved', 'Could not save');
+      return;
+    }
+
+    input.disabled = false;
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit';
+    const errText = rawMsg || 'Could not submit referral right now.';
+    setFieldError('referred_by', errText);
+    setSectionMessage('msg-referral', '', '');
+    input.focus();
+    endFlight(false, 'Saved', 'Could not save');
+    return;
+  }
+
+  const savedPhone = cleanText(data?.referred_by) || phoneRes.local;
+  const referrerName = cleanText(data?.referrer_name);
+
+  state.profile.referred_by = savedPhone;
+  markDirty('profiles.referred_by', false);
+  populateReferralSection();
+
+  setSectionMessage(
+    'msg-referral',
+    'ok',
+    referrerName
+      ? `Saved — Referral credited to ${referrerName} (${savedPhone}).`
+      : `Saved — Referral credited to ${savedPhone}.`
+  );
+  endFlight(true, 'Saved', 'Could not save');
+}
+
 function populateBasicsSection() {
   const p = state.profile;
   const allScalarSpecs = { ...BASICS_CORE_SPECS, ...BASICS_EXTRA_SCALAR_SPECS };
+
+  populateReferralSection();
 
   Object.keys(allScalarSpecs).forEach((col) => {
     const input = document.getElementById(`f-${col}`);
@@ -5258,6 +5461,18 @@ function initDomEvents() {
       handleBasicsFieldBlur(col);
     });
   });
+
+  document.getElementById('form-referral')?.addEventListener('submit', handleReferralSubmit);
+  const refInput = document.getElementById('f-referred_by');
+  if (refInput) {
+    refInput.addEventListener('input', () => {
+      setFieldError('referred_by', '');
+      setSectionMessage('msg-referral', '', '');
+      if (state.profile && isReferredByUnset(state.profile.referred_by)) {
+        markDirty('profiles.referred_by', Boolean(refInput.value.trim()));
+      }
+    });
+  }
 
   document.getElementById('form-basics')?.addEventListener('submit', handleSaveBasicsForm);
 

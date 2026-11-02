@@ -140,6 +140,41 @@
             </div>
           </div>
 
+          <!-- One-Time Referral Attribution (profiles.referred_by & profiles.total_referred) -->
+          <form id="form-referral" class="pe-referral-card" novalidate>
+            <div class="pe-referral-head">
+              <div>
+                <div class="pe-referral-title-row">
+                  <label for="f-referred_by" class="input-label">Referred By (<code>referred_by</code>)</label>
+                  <span class="pe-referral-status" id="referred-by-badge" data-locked="false">One-time edit</span>
+                </div>
+                <p class="pe-subpanel-desc" id="referred-by-desc">
+                  Enter the account phone number of the member who referred you. This can be submitted only once.
+                </p>
+              </div>
+              <div class="pe-referral-counter" aria-label="Total members you have referred">
+                <span class="pe-referral-counter-label">Total Referred (<code>total_referred</code>)</span>
+                <strong class="pe-referral-counter-val" id="ro-total-referred">0</strong>
+              </div>
+            </div>
+
+            <div class="pe-referral-row">
+              <input
+                type="tel"
+                id="f-referred_by"
+                class="input-field pe-num-input pe-referral-input"
+                inputmode="tel"
+                autocomplete="tel"
+                maxlength="20"
+                placeholder="01XXXXXXXXX"
+              >
+              <button type="submit" class="btn btn-orange pe-referral-btn" id="submit-referred-by-btn">Submit</button>
+            </div>
+
+            <div class="pe-field-error" id="err-referred_by" role="alert"></div>
+            <div class="pe-section-msg" id="msg-referral" role="status" aria-live="polite"></div>
+          </form>
+
           <!-- Dynamic Empty-State Notice for Null Legal / Registration Columns -->
           <div id="pe-legal-missing-banner" class="pe-missing-banner" role="status" aria-live="polite" hidden>
             <div class="pe-missing-banner-title" id="pe-legal-missing-title">Complete your legal &amp; registration record</div>
