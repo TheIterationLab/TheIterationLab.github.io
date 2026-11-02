@@ -4,6 +4,11 @@
 // /softwares/, and /communities/ (both paginated list & ?id= detail views).
 // ==========================================================================
 
+const UPLOAD_WORKER_URL = 'https://red-math-923c.mdikramdr.workers.dev'; // no trailing slash
+const GH_OWNER = 'TheIterationLab';
+const GH_REPO = 'papers';
+const GITHUB_BASE = `https://github.com/${GH_OWNER}/${GH_REPO}/releases/download`;
+
 import {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
@@ -1757,6 +1762,12 @@ function renderResearchDetail(container, row, cfg, profilesMap) {
   }
   card.appendChild(endBar);
 
+  renderReviewsSection(card, {
+    category: 'papers',
+    id: ilrid,
+    itemUidList: authorIds
+  });
+
   wrap.appendChild(card);
   container.replaceChildren(wrap);
 }
@@ -1908,8 +1919,334 @@ function renderSoftwareDetail(container, row, cfg, profilesMap) {
   }
   card.appendChild(endBar);
 
+  renderReviewsSection(card, {
+    category: 'softwares',
+    id: ilsid,
+    itemUidList: devIds
+  });
+
   wrap.appendChild(card);
   container.replaceChildren(wrap);
+}
+
+/* ==========================================================================
+   Reviews System Component (Teachers' & Peers' Reviews)
+   ========================================================================== */
+let dirSbClient = null;
+async function getDirectorySupabaseClient() {
+  if (dirSbClient) return dirSbClient;
+  if (!window.supabase) {
+    await new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js';
+      script.onload = () => resolve();
+      script.onerror = () => resolve();
+      document.head.appendChild(script);
+    });
+  }
+  if (window.supabase && typeof window.supabase.createClient === 'function') {
+    dirSbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    return dirSbClient;
+  }
+  return null;
+}
+
+async function renderReviewsSection(container, { category, id, itemUidList = [] }) {
+  if (!id) return;
+
+  const client = await getDirectorySupabaseClient();
+  let session = null;
+  let userProfile = null;
+
+  if (client) {
+    try {
+      const { data } = await client.auth.getSession();
+      session = data?.session || null;
+      if (session?.user?.id) {
+        const { data: prof } = await client
+          .from('profiles')
+          .select('cid,type,verified,name,slug')
+          .eq('cid', session.user.id)
+          .maybeSingle();
+        userProfile = prof || null;
+      }
+    } catch (_) {}
+  }
+
+  const currentUid = (session?.user?.id || '').toLowerCase();
+  const normalizedItemUids = (itemUidList || []).map(u => String(u).toLowerCase());
+  const isAuthor = Boolean(currentUid && normalizedItemUids.includes(currentUid));
+
+  const isVerifiedTeacher = userProfile?.type === 'T' && (userProfile?.verified === 1 || userProfile?.verified === true);
+  const isVerifiedStudent = userProfile?.type === 'S' && (userProfile?.verified === 1 || userProfile?.verified === true);
+
+  const reviewsContainer = el('div', 'dir-reviews-container');
+
+  // 1. Teachers' Reviews
+  const teacherBox = createReviewBox({
+    title: "Teachers' Reviews",
+    typeLetter: 't',
+    category,
+    id,
+    session,
+    userProfile,
+    isAuthor,
+    canWrite: !isAuthor && isVerifiedTeacher,
+    denyReason: isAuthor
+      ? 'Authors cannot review their own work'
+      : !session || (!isVerifiedTeacher && !isVerifiedStudent)
+      ? 'Log in as a verified teacher or student to write a review'
+      : isVerifiedStudent
+      ? 'Only verified teachers can write here'
+      : 'Log in as a verified teacher or student to write a review'
+  });
+
+  // 2. Peers' Reviews
+  const peerBox = createReviewBox({
+    title: "Peers' Reviews",
+    typeLetter: 'p',
+    category,
+    id,
+    session,
+    userProfile,
+    isAuthor,
+    canWrite: !isAuthor && isVerifiedStudent,
+    denyReason: isAuthor
+      ? 'Authors cannot review their own work'
+      : !session || (!isVerifiedTeacher && !isVerifiedStudent)
+      ? 'Log in as a verified teacher or student to write a review'
+      : isVerifiedTeacher
+      ? 'Only verified students can write here'
+      : 'Log in as a verified teacher or student to write a review'
+  });
+
+  reviewsContainer.appendChild(teacherBox);
+  reviewsContainer.appendChild(peerBox);
+  container.appendChild(reviewsContainer);
+}
+
+function createReviewBox({ title, typeLetter, category, id, session, userProfile, isAuthor, canWrite, denyReason }) {
+  const box = el('div', 'dir-review-box');
+
+  const head = el('div', 'dir-review-box-header');
+  head.appendChild(el('div', 'dir-review-box-title', title));
+  const countEl = el('span', 'dir-review-box-count', '0 reviews');
+  head.appendChild(countEl);
+  box.appendChild(head);
+
+  const listEl = el('div', 'dir-review-list');
+  const loadingEl = el('div', 'dir-review-empty', 'Loading reviews…');
+  listEl.appendChild(loadingEl);
+  box.appendChild(listEl);
+
+  const errorEl = el('div', 'dir-review-error');
+  errorEl.hidden = true;
+
+  if (canWrite && session) {
+    const form = el('form', 'dir-review-form');
+    const textarea = el('textarea', 'input-field dir-review-textarea');
+    textarea.rows = 3;
+    textarea.maxLength = 1000;
+    textarea.placeholder = `Write your review as a verified ${userProfile?.type === 'T' ? 'teacher' : 'student'} (max 1000 chars)…`;
+    textarea.required = true;
+
+    const footer = el('div', 'dir-review-form-footer');
+    const counter = el('span', 'dir-review-counter', '1000 characters remaining');
+    textarea.addEventListener('input', () => {
+      const remaining = 1000 - textarea.value.length;
+      counter.textContent = `${remaining} character${remaining === 1 ? '' : 's'} remaining`;
+    });
+
+    const submitBtn = el('button', 'dir-btn dir-btn-primary', 'Post Review');
+    submitBtn.type = 'submit';
+
+    footer.appendChild(counter);
+    footer.appendChild(submitBtn);
+
+    form.appendChild(textarea);
+    form.appendChild(footer);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = textarea.value.trim();
+      if (!text) return;
+      errorEl.hidden = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Posting…';
+
+      try {
+        const postUrl = `${UPLOAD_WORKER_URL}/comments/${category}/${encodeURIComponent(id)}/${typeLetter}`;
+        const response = await fetch(postUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ comment: text })
+        });
+
+        if (!response.ok) {
+          let errMsg = `Failed to post review (HTTP ${response.status})`;
+          try {
+            const errJson = await response.json();
+            if (errJson?.error) errMsg = errJson.error;
+          } catch (_) {}
+          throw new Error(errMsg);
+        }
+
+        const data = await response.json();
+        const newComment = data.comment || {
+          id: data.id || `c_${Date.now()}`,
+          uid: session.user.id,
+          name: userProfile?.name || 'You',
+          comment: text,
+          at: new Date().toISOString(),
+          profile_link: userProfile?.slug ? `/profile/${userProfile.type}/${userProfile.slug}` : `/profile/?cid=${session.user.id}`
+        };
+
+        prependCommentItem(listEl, newComment, countEl, typeLetter, category, id, session, errorEl);
+        textarea.value = '';
+        counter.textContent = '1000 characters remaining';
+      } catch (err) {
+        errorEl.textContent = err.message || 'Could not post review.';
+        errorEl.hidden = false;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Post Review';
+      }
+    });
+
+    box.appendChild(form);
+  } else {
+    const hint = el('p', 'dir-review-hint', denyReason);
+    box.appendChild(hint);
+  }
+
+  box.appendChild(errorEl);
+
+  loadComments(listEl, countEl, typeLetter, category, id, session, errorEl);
+
+  return box;
+}
+
+async function loadComments(listEl, countEl, typeLetter, category, id, session, errorEl, bust = false) {
+  const url = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/main/comments/${category}/${encodeURIComponent(id)}/${typeLetter}_comments.json${bust ? `?t=${Date.now()}` : ''}`;
+
+  let comments = [];
+  try {
+    let res = await fetch(url);
+    if (res.status === 404) {
+      await new Promise(r => setTimeout(r, 1000));
+      res = await fetch(url);
+    }
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        comments = data;
+      }
+    }
+  } catch (_) {
+    comments = [];
+  }
+
+  comments.sort((a, b) => new Date(b.at || 0) - new Date(a.at || 0));
+
+  listEl.replaceChildren();
+  countEl.textContent = `${comments.length} review${comments.length === 1 ? '' : 's'}`;
+
+  if (comments.length === 0) {
+    listEl.appendChild(el('div', 'dir-review-empty', 'No reviews yet.'));
+    return;
+  }
+
+  comments.forEach(c => {
+    listEl.appendChild(createCommentDomItem(c, listEl, countEl, typeLetter, category, id, session, errorEl));
+  });
+}
+
+function createCommentDomItem(c, listEl, countEl, typeLetter, category, id, session, errorEl) {
+  const item = el('div', 'dir-review-item');
+  const head = el('div', 'dir-review-item-head');
+
+  const authorWrap = el('div', 'dir-review-author-wrap');
+  if (c.profile_link) {
+    const a = el('a', 'dir-review-author', c.name || 'Anonymous');
+    a.href = c.profile_link;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    authorWrap.appendChild(a);
+  } else {
+    authorWrap.appendChild(el('span', 'dir-review-author', c.name || 'Anonymous'));
+  }
+  head.appendChild(authorWrap);
+
+  const meta = el('div', 'dir-review-meta');
+  const timeStr = c.at ? new Date(c.at).toLocaleString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+  }) : '';
+  meta.appendChild(el('time', 'dir-review-time', timeStr));
+
+  const currentUid = (session?.user?.id || '').toLowerCase();
+  if (currentUid && String(c.uid || '').toLowerCase() === currentUid) {
+    const delBtn = el('button', 'dir-review-del-btn', 'Delete');
+    delBtn.type = 'button';
+    delBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to delete your review?')) return;
+      delBtn.disabled = true;
+      delBtn.textContent = 'Deleting…';
+      errorEl.hidden = true;
+      try {
+        const delUrl = `${UPLOAD_WORKER_URL}/comments/${category}/${encodeURIComponent(id)}/${typeLetter}?id=${encodeURIComponent(c.id)}`;
+        const res = await fetch(delUrl, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+        if (!res.ok) {
+          let errText = `Failed to delete review (HTTP ${res.status})`;
+          try {
+            const errJ = await res.json();
+            if (errJ?.error) errText = errJ.error;
+          } catch (_) {}
+          throw new Error(errText);
+        }
+        item.remove();
+        const remaining = listEl.querySelectorAll('.dir-review-item').length;
+        countEl.textContent = `${remaining} review${remaining === 1 ? '' : 's'}`;
+        if (remaining === 0) {
+          listEl.appendChild(el('div', 'dir-review-empty', 'No reviews yet.'));
+        }
+      } catch (err) {
+        errorEl.textContent = err.message || 'Could not delete review.';
+        errorEl.hidden = false;
+        delBtn.disabled = false;
+        delBtn.textContent = 'Delete';
+      }
+    });
+    meta.appendChild(delBtn);
+  }
+
+  head.appendChild(meta);
+  item.appendChild(head);
+
+  // Insert text with textContent only, never innerHTML
+  const p = el('p', 'dir-review-text');
+  p.textContent = c.comment || '';
+  item.appendChild(p);
+
+  return item;
+}
+
+function prependCommentItem(listEl, newComment, countEl, typeLetter, category, id, session, errorEl) {
+  const emptyEl = listEl.querySelector('.dir-review-empty');
+  if (emptyEl) emptyEl.remove();
+
+  const item = createCommentDomItem(newComment, listEl, countEl, typeLetter, category, id, session, errorEl);
+  listEl.prepend(item);
+
+  const total = listEl.querySelectorAll('.dir-review-item').length;
+  countEl.textContent = `${total} review${total === 1 ? '' : 's'}`;
 }
 
 function renderCommunityDetail(container, row, cfg, profilesMap) {

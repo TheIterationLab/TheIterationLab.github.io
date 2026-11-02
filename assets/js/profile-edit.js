@@ -10,7 +10,10 @@
 //    (max 25 MB) with automatic MOCK mode while UPLOAD_WORKER_URL is empty.
 // ==========================================================================
 
-const UPLOAD_WORKER_URL = '';
+const UPLOAD_WORKER_URL = 'https://red-math-923c.mdikramdr.workers.dev'; // no trailing slash
+const GH_OWNER = 'TheIterationLab';
+const GH_REPO = 'papers';
+const GITHUB_BASE = `https://github.com/${GH_OWNER}/${GH_REPO}/releases/download`;
 
 import {
   SUPABASE_URL,
@@ -728,7 +731,72 @@ function validatePdfFile(file) {
   }
 }
 
-async function uploadBlobToWorker({ blob, filename, kind, objectKey = '' }) {
+function resolveWorkerEndpoint({ kind, id = '', objectKey = '' }) {
+  if (!UPLOAD_WORKER_URL) return { url: '', contentType: '' };
+  const uid = cleanText(state.ownerCid).toLowerCase();
+
+  switch (kind) {
+    case 'avatar':
+    case 'profile-picture':
+      if (state.profile?.type === 'I' && state.ownerEiin) {
+        return {
+          url: `${UPLOAD_WORKER_URL}/institutes/${encodeURIComponent(cleanText(state.ownerEiin))}/profile_image.webp`,
+          contentType: 'image/webp'
+        };
+      }
+      return {
+        url: `${UPLOAD_WORKER_URL}/profiles/${uid}/profile_image.webp`,
+        contentType: 'image/webp'
+      };
+
+    case 'research-pdf':
+      return {
+        url: `${UPLOAD_WORKER_URL}/papers/${uid}/${id}.pdf`,
+        contentType: 'application/pdf'
+      };
+
+    case 'research-cover':
+      return {
+        url: `${UPLOAD_WORKER_URL}/papers/${uid}/${id}_cover_image.webp`,
+        contentType: 'image/webp'
+      };
+
+    case 'software-pdf':
+      return {
+        url: `${UPLOAD_WORKER_URL}/softwares/${uid}/${id}.pdf`,
+        contentType: 'application/pdf'
+      };
+
+    case 'software-image':
+    case 'software-cover':
+      return {
+        url: `${UPLOAD_WORKER_URL}/softwares/${uid}/${id}_cover_image.webp`,
+        contentType: 'image/webp'
+      };
+
+    case 'institute-cover':
+      const eiin = cleanText(id || state.ownerEiin);
+      return {
+        url: `${UPLOAD_WORKER_URL}/institutes/${encodeURIComponent(eiin)}/cover_image.webp`,
+        contentType: 'image/webp'
+      };
+
+    case 'institute-profile':
+      const instEiin = cleanText(id || state.ownerEiin);
+      return {
+        url: `${UPLOAD_WORKER_URL}/institutes/${encodeURIComponent(instEiin)}/profile_image.webp`,
+        contentType: 'image/webp'
+      };
+
+    default:
+      if (objectKey && /^https?:\/\//i.test(objectKey)) {
+        return { url: objectKey, contentType: 'application/octet-stream' };
+      }
+      return { url: `${UPLOAD_WORKER_URL}/uploads/${uid}`, contentType: 'application/octet-stream' };
+  }
+}
+
+async function uploadBlobToWorker({ blob, filename, kind, id = '', objectKey = '', contentType = '' }) {
   const vTs = Date.now();
   if (!UPLOAD_WORKER_URL) {
     return {
@@ -744,20 +812,21 @@ async function uploadBlobToWorker({ blob, filename, kind, objectKey = '' }) {
     throw new Error('Your Supabase session expired. Please sign in again.');
   }
 
-  const formData = new FormData();
-  formData.append('file', blob, filename);
-  formData.append('kind', kind);
-  formData.append('cid', state.ownerCid);
-  if (objectKey) {
-    formData.append('objectKey', objectKey);
+  const resolved = resolveWorkerEndpoint({ kind, id, objectKey });
+  const targetUrl = resolved.url;
+  const finalContentType = contentType || resolved.contentType || 'application/octet-stream';
+
+  if (!targetUrl) {
+    throw new Error('Could not resolve upload endpoint link.');
   }
 
-  const response = await fetch(UPLOAD_WORKER_URL, {
+  const response = await fetch(targetUrl, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token}`
+      Authorization: `Bearer ${token}`,
+      'Content-Type': finalContentType
     },
-    body: formData
+    body: blob
   });
 
   if (!response.ok) {
@@ -767,9 +836,7 @@ async function uploadBlobToWorker({ blob, filename, kind, objectKey = '' }) {
       if (errJson?.error || errJson?.message) {
         detail = errJson.error || errJson.message;
       }
-    } catch (_) {
-      // Ignore non-JSON body
-    }
+    } catch (_) {}
     throw new Error(detail);
   }
 
@@ -786,6 +853,27 @@ async function uploadBlobToWorker({ blob, filename, kind, objectKey = '' }) {
     localUrl: '',
     url: cleanText(payload.url || payload.publicUrl || payload.path || '')
   };
+}
+
+async function deleteBlobFromWorker({ kind, id = '', objectKey = '' }) {
+  if (!UPLOAD_WORKER_URL) return true;
+  const token = await getAccessToken();
+  if (!token) return false;
+
+  const resolved = resolveWorkerEndpoint({ kind, id, objectKey });
+  if (!resolved.url) return false;
+
+  try {
+    const response = await fetch(resolved.url, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.ok;
+  } catch (_) {
+    return false;
+  }
 }
 
 /* ==========================================================================
@@ -2581,7 +2669,15 @@ async function handleAvatarUploadClick() {
       );
       endFlight(true, 'Saved (Preview)', 'Could not save');
     } else {
-      // Live R2 overwrite: profiles.photo stays untouched; refresh preview with ?v=timestamp
+      // Live Cloudflare upload returned url
+      if (res.url && res.url !== cleanText(state.profile.photo)) {
+        const client = getSupabaseClient();
+        await client
+          .from('profiles')
+          .update({ photo: res.url, updated_at: new Date().toISOString() })
+          .eq('cid', state.ownerCid);
+        state.profile.photo = res.url;
+      }
       populatePhotoSection(res.timestamp);
       if (resetBtn) resetBtn.hidden = true;
       setSectionMessage('msg-avatar', 'ok', `Portrait uploaded to Cloudflare (preview refreshed ?v=${res.timestamp}).`);
@@ -3765,6 +3861,14 @@ async function deleteResearchRow(ilrid) {
   const client = getSupabaseClient();
   beginFlight('Deleting…');
 
+  // Rule 31: Call DELETE on Worker for PDF and cover links first while DB row still exists
+  if (UPLOAD_WORKER_URL && ilrid) {
+    try {
+      await deleteBlobFromWorker({ kind: 'research-pdf', id: ilrid });
+      await deleteBlobFromWorker({ kind: 'research-cover', id: ilrid });
+    } catch (_) {}
+  }
+
   const { error } = await client
     .from('researches')
     .delete()
@@ -3788,6 +3892,9 @@ function openResearchModal(existingRow = null) {
   openEditorModal(
     isEdit ? `Edit Research · ${cleanText(existingRow.ilrid)}` : 'Add New Research Paper',
     (bodyEl, closeFn) => {
+      let pendingPdfFile = null;
+      let pendingCoverBlob = null;
+
       if (isEdit) {
         const roStrip = document.createElement('div');
         roStrip.className = 'pe-readonly-strip';
@@ -3925,23 +4032,29 @@ function openResearchModal(existingRow = null) {
         if (!file) return;
         try {
           validatePdfFile(file);
-          pdfStatus.textContent = UPLOAD_WORKER_URL
-            ? 'Uploading PDF…'
-            : `MOCK mode: validated "${file.name}" (${formatBytes(file.size)} <= 25 MB). No network call made; paste an external https:// URL above if you want a live link now.`;
-          if (UPLOAD_WORKER_URL) {
+          if (isEdit) {
+            pdfStatus.textContent = 'Uploading PDF…';
+            saveBtn.disabled = true;
             const up = await uploadBlobToWorker({
               blob: file,
               filename: file.name || 'manuscript.pdf',
               kind: 'research-pdf',
-              objectKey: isEdit ? cleanText(existingRow.ilrid) : ''
+              id: cleanText(existingRow.ilrid)
             });
+            saveBtn.disabled = false;
             if (up.url) {
               paperUrlInput.value = up.url;
               pdfStatus.textContent = `Uploaded PDF → ${up.url}`;
+            } else if (up.mock) {
+              pdfStatus.textContent = `MOCK mode: validated "${file.name}" (${formatBytes(file.size)}).`;
             }
+          } else {
+            pendingPdfFile = file;
+            pdfStatus.textContent = `Selected "${file.name}" (${formatBytes(file.size)}). Will upload automatically once record is published.`;
           }
           fPaper.setError('');
         } catch (err) {
+          saveBtn.disabled = false;
           fPaper.setError(err.message || 'Invalid PDF.');
         }
       });
@@ -3984,22 +4097,33 @@ function openResearchModal(existingRow = null) {
         if (!file) return;
         try {
           const conv = await convertImageFileToWebP(file);
-          const up = await uploadBlobToWorker({
-            blob: conv.blob,
-            filename: 'cover.webp',
-            kind: 'research-cover',
-            objectKey: isEdit ? cleanText(existingRow.cover_url) : ''
-          });
-          coverPreview.src = up.mock ? up.localUrl : `${up.url || resolveImageSrc(coverUrlInput.value, IMAGE_DIRS.researches)}?v=${up.timestamp}`;
-          coverPreview.hidden = false;
-          if (!up.mock && up.url) {
-            coverUrlInput.value = up.url;
-            coverStatus.textContent = `Uploaded WebP (${conv.width}×${conv.height}, ${formatBytes(conv.blob.size)}).`;
+          if (isEdit) {
+            coverStatus.textContent = 'Uploading cover image…';
+            saveBtn.disabled = true;
+            const up = await uploadBlobToWorker({
+              blob: conv.blob,
+              filename: 'cover.webp',
+              kind: 'research-cover',
+              id: cleanText(existingRow.ilrid)
+            });
+            saveBtn.disabled = false;
+            coverPreview.src = up.mock ? up.localUrl : `${up.url || resolveImageSrc(coverUrlInput.value, IMAGE_DIRS.researches)}?v=${up.timestamp}`;
+            coverPreview.hidden = false;
+            if (!up.mock && up.url) {
+              coverUrlInput.value = up.url;
+              coverStatus.textContent = `Uploaded WebP (${conv.width}×${conv.height}, ${formatBytes(conv.blob.size)}).`;
+            } else {
+              coverStatus.textContent = `MOCK preview: WebP ${conv.width}×${conv.height} (${formatBytes(conv.blob.size)}).`;
+            }
           } else {
-            coverStatus.textContent = `MOCK preview: WebP ${conv.width}×${conv.height} (${formatBytes(conv.blob.size)}).`;
+            pendingCoverBlob = conv.blob;
+            coverPreview.src = URL.createObjectURL(conv.blob);
+            coverPreview.hidden = false;
+            coverStatus.textContent = `Converted WebP (${conv.width}×${conv.height}, ${formatBytes(conv.blob.size)}). Will upload automatically once record is published.`;
           }
           fCover.setError('');
         } catch (err) {
+          saveBtn.disabled = false;
           fCover.setError(err.message || 'Cover conversion failed.');
         }
       });
@@ -4280,6 +4404,57 @@ function openResearchModal(existingRow = null) {
             return;
           }
 
+          // Rule 30: The row now exists in database. Upload files to worker and update URLs.
+          let uploadedPaperUrl = null;
+          let uploadedCoverUrl = null;
+
+          if (pendingPdfFile && UPLOAD_WORKER_URL) {
+            beginFlight('Uploading manuscript PDF…');
+            try {
+              const upPdf = await uploadBlobToWorker({
+                blob: pendingPdfFile,
+                filename: pendingPdfFile.name || 'manuscript.pdf',
+                kind: 'research-pdf',
+                id: data.ilrid
+              });
+              if (upPdf.url) uploadedPaperUrl = upPdf.url;
+            } catch (uErr) {
+              console.warn('PDF upload error:', uErr);
+            }
+          }
+
+          if (pendingCoverBlob && UPLOAD_WORKER_URL) {
+            beginFlight('Uploading cover image…');
+            try {
+              const upCover = await uploadBlobToWorker({
+                blob: pendingCoverBlob,
+                filename: 'cover.webp',
+                kind: 'research-cover',
+                id: data.ilrid
+              });
+              if (upCover.url) uploadedCoverUrl = upCover.url;
+            } catch (cErr) {
+              console.warn('Cover upload error:', cErr);
+            }
+          }
+
+          if (uploadedPaperUrl || uploadedCoverUrl) {
+            const fileUpdates = {};
+            if (uploadedPaperUrl) {
+              fileUpdates.paper_url = uploadedPaperUrl;
+              data.paper_url = uploadedPaperUrl;
+            }
+            if (uploadedCoverUrl) {
+              fileUpdates.cover_url = uploadedCoverUrl;
+              data.cover_url = uploadedCoverUrl;
+            }
+            await client
+              .from('researches')
+              .update(fileUpdates)
+              .eq('ilrid', data.ilrid)
+              .contains('uid', [state.ownerCid]);
+          }
+
           state.researches = state.researches.map((r) => (r === tempRow ? data : r));
           renderResearchesList();
           await syncProfileIdArray('researches', data.ilrid, 'add');
@@ -4427,6 +4602,14 @@ async function deleteSoftwareRow(ilsid) {
   const client = getSupabaseClient();
   beginFlight('Deleting…');
 
+  // Rule 31: Call DELETE on Worker for PDF and cover links first while DB row still exists
+  if (UPLOAD_WORKER_URL && ilsid) {
+    try {
+      await deleteBlobFromWorker({ kind: 'software-pdf', id: ilsid });
+      await deleteBlobFromWorker({ kind: 'software-image', id: ilsid });
+    } catch (_) {}
+  }
+
   const { error } = await client
     .from('software')
     .delete()
@@ -4450,6 +4633,8 @@ function openSoftwareModal(existingRow = null) {
   openEditorModal(
     isEdit ? `Edit Software · ${cleanText(existingRow.ilsid)}` : 'Publish New Software',
     (bodyEl, closeFn) => {
+      let pendingImgBlob = null;
+
       if (isEdit) {
         const roStrip = document.createElement('div');
         roStrip.className = 'pe-readonly-strip';
@@ -4657,22 +4842,33 @@ function openSoftwareModal(existingRow = null) {
         if (!file) return;
         try {
           const conv = await convertImageFileToWebP(file);
-          const up = await uploadBlobToWorker({
-            blob: conv.blob,
-            filename: 'software.webp',
-            kind: 'software-image',
-            objectKey: isEdit ? cleanText(existingRow.image_url) : ''
-          });
-          imgPreview.src = up.mock ? up.localUrl : `${up.url || resolveImageSrc(imgUrlInput.value, IMAGE_DIRS.softwares)}?v=${up.timestamp}`;
-          imgPreview.hidden = false;
-          if (!up.mock && up.url) {
-            imgUrlInput.value = up.url;
-            imgStatus.textContent = `Uploaded WebP (${conv.width}×${conv.height}, ${formatBytes(conv.blob.size)}).`;
+          if (isEdit) {
+            imgStatus.textContent = 'Uploading preview image…';
+            saveBtn.disabled = true;
+            const up = await uploadBlobToWorker({
+              blob: conv.blob,
+              filename: 'software.webp',
+              kind: 'software-image',
+              id: cleanText(existingRow.ilsid)
+            });
+            saveBtn.disabled = false;
+            imgPreview.src = up.mock ? up.localUrl : `${up.url || resolveImageSrc(imgUrlInput.value, IMAGE_DIRS.softwares)}?v=${up.timestamp}`;
+            imgPreview.hidden = false;
+            if (!up.mock && up.url) {
+              imgUrlInput.value = up.url;
+              imgStatus.textContent = `Uploaded WebP (${conv.width}×${conv.height}, ${formatBytes(conv.blob.size)}).`;
+            } else {
+              imgStatus.textContent = `MOCK preview: WebP ${conv.width}×${conv.height} (${formatBytes(conv.blob.size)}).`;
+            }
           } else {
-            imgStatus.textContent = `MOCK preview: WebP ${conv.width}×${conv.height} (${formatBytes(conv.blob.size)}).`;
+            pendingImgBlob = conv.blob;
+            imgPreview.src = URL.createObjectURL(conv.blob);
+            imgPreview.hidden = false;
+            imgStatus.textContent = `Converted WebP (${conv.width}×${conv.height}, ${formatBytes(conv.blob.size)}). Will upload automatically once record is published.`;
           }
           fImg.setError('');
         } catch (err) {
+          saveBtn.disabled = false;
           fImg.setError(err.message || 'Image conversion failed.');
         }
       });
@@ -4951,6 +5147,29 @@ function openSoftwareModal(existingRow = null) {
             return;
           }
 
+          // Rule 30: Software row now exists in database. Upload preview image to worker and update URL.
+          if (pendingImgBlob && UPLOAD_WORKER_URL) {
+            beginFlight('Uploading software preview image…');
+            try {
+              const upImg = await uploadBlobToWorker({
+                blob: pendingImgBlob,
+                filename: 'software.webp',
+                kind: 'software-image',
+                id: data.ilsid
+              });
+              if (upImg.url) {
+                await client
+                  .from('software')
+                  .update({ image_url: upImg.url })
+                  .eq('ilsid', data.ilsid)
+                  .contains('uid', [state.ownerCid]);
+                data.image_url = upImg.url;
+              }
+            } catch (iErr) {
+              console.warn('Software image upload error:', iErr);
+            }
+          }
+
           state.softwares = state.softwares.map((r) => (r === tempRow ? data : r));
           renderSoftwaresList();
           await syncProfileIdArray('softwares', data.ilsid, 'add');
@@ -5096,6 +5315,7 @@ function initDomEvents() {
         blob: conv.blob,
         filename: 'campus-cover.webp',
         kind: 'institute-cover',
+        id: cleanText(state.ownerEiin),
         objectKey: cleanText(coverInput?.value)
       });
       if (state.pendingInstCoverObjectUrl) {

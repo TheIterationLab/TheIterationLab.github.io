@@ -21,6 +21,10 @@ import {
   IMAGE_DIRS
 } from '../../js/config.js';
 
+const GH_OWNER = 'TheIterationLab';
+const GH_REPO = 'papers';
+const GITHUB_BASE = `https://github.com/${GH_OWNER}/${GH_REPO}/releases/download`;
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const FOUNDER_ALIASES = new Set([
   'ikramulhoquearik',

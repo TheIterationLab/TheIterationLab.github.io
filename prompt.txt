@@ -1,0 +1,92 @@
+This prompt was by Claude, not by me . If you guess something is clashing, ask me.
+
+Connect the Edit Profile , researches, softwares page to my Cloudflare Worker for file uploads. Keep everything else as it is.
+CONFIG
+At the top of those pages' js files:
+const UPLOAD_WORKER_URL = 'https://red-math-923c.mdikramdr.workers.dev'; // no trailing slash
+Keep MOCK mode only while this constant is empty.
+HOW THE WORKER WORKS
+Every upload is a plain request with the raw file as the body. Do NOT use FormData or multipart.
+Always send these headers:
+Authorization: Bearer <session.access_token> (from supabase client.auth.getSession())
+Content-Type: application/pdf or image/webp or video/mp4
+POST uploads or replaces a file. DELETE removes it. Both use the same link.
+A successful POST returns JSON { ok: true, url }. Save that exact url in the database.
+Errors return JSON { error: "..." } with status 401, 403, 413, 415 or 500. Show the error text to the user in the form.
+The link for a file never changes, so replacing a file needs no database update. Only update the database when the url value is different from the stored one.
+
+LINKS (<uid> = the logged-in user's id, lowercase)
+Research PDF: POST/DELETE {WORKER}/papers/<uid>/<ILRID>.pdf -> save url in researches.paper_url
+Research cover: POST/DELETE {WORKER}/papers/<uid>/<ILRID>_cover_image.webp -> researches.cover_url
+Software PDF: {WORKER}/softwares/<uid>/<ILSID>.pdf
+Software cover: {WORKER}/softwares/<uid>/<ILSID>_cover_image.webp
+Profile picture: {WORKER}/profiles/<uid>/profile_image.webp -> profiles.photo
+Event images: {WORKER}/events/<event-id>/event_image1.webp (2, 3 ... for more)
+Event videos: {WORKER}/events/<event-id>/event_video1.mp4
+Institute images: {WORKER}/institutes/<eiin>/profile_image.webp and cover_image.webp
+RULES THE PAGE MUST FOLLOW
+Images are always converted to WebP in the browser (max 800px on the long side, quality about 0.85) before upload, and must be 2 MB or smaller.
+PDFs must be real PDFs and 25 MB or smaller. Event videos must be .mp4 and 25 MB or smaller.
+The research or software row must already exist before uploading its files. For a new item: save the row first so it gets its ID, then upload the files, then save the returned urls.
+When deleting a research or software item: first call DELETE on its PDF and cover image links, and only after that delete the database row. The Worker checks ownership against the row, so the row must still exist.
+After uploading a picture, show it with ?v=<timestamp> added to the link for the preview only. Never store the ?v= part.
+Show a progress state while uploading, disable the Save button until it finishes, and show a clear error if it fails.
+Keep the existing external-link option: if the user pastes a link instead of uploading a file, save that link as before.
+
+OUTPUT
+Return the complete updated profile-edit.js, and list every place where profile.js must change so it can show the Worker links (for example resolveImageSrc must accept full https links in profiles.photo)
+READING FILES (important)
+The Worker is only for writing. NEVER request files through the Worker. Do not use the Worker link for <img>, <video> or <a href>.
+Browsers read files directly from GitHub:
+https://github.com/<GH_OWNER>/<GH_REPO>/releases/download/<category>/<folder-id>__<file name>
+Examples:
+.../releases/download/papers/<uid>__ILR0004.pdf
+.../releases/download/papers/<uid>__ILR0004_cover_image.webp
+.../releases/download/softwares/<uid>__ILS0002.pdf
+.../releases/download/profiles/<uid>__profile_image.webp
+.../releases/download/events/<event-id>__event_image1.webp
+.../releases/download/events/<event-id>__event_video1.mp4
+.../releases/download/institutes/<eiin>__cover_image.webp
+.../releases/download/institutes/<eiin>__prifile_image.webp
+Rules:
+Upload (POST) and delete (DELETE) go to the Worker link, as described above.
+After a successful POST, the Worker returns { ok: true, url }. That url is already the full GitHub link. Save it exactly as returned in paper_url, cover_url, photo and so on.
+Because the name never changes when a file is replaced, do not update the database after a replace.
+The preview after an upload may use ?v=<timestamp> on the GitHub link, but never store it.
+profile.js must accept full https GitHub links in profiles.photo, researches.cover_url, researches.paper_url and the matching software, event and institute columns, without adding any local folder prefix.
+Set GITHUB_BASE at the top of the file as a constant: https://github.com/<GH_OWNER>/<GH_REPO>/releases/download
+
+
+Add two separate review boxes to the research page and the software page: "Teachers' Reviews" and "Peers' Reviews". Keep everything else as it is, and reuse the existing styles.
+
+READING (no Worker, no login needed)
+- Teachers: https://raw.githubusercontent.com/<GH_OWNER>/<GH_REPO>/main/comments/<papers|softwares>/<ID>/t_comments.json
+- Peers: same link with p_comments.json
+- <papers|softwares> and <ID> are the page's own category and ILR/ILS id.
+- Each file is a JSON list: [{ id, uid, name, comment, at, profile_link }]. A 404 means "no comments yet", not an error; if the first read gives 404, retry once after 1 second.
+- Show newest first, with the commenter's name linking to profile_link, a readable date and time, and the text. Insert the text with textContent only, never innerHTML.
+- Add ?t=<Date.now()> to the read link only right after the user posts.
+
+WRITING (needs login)
+- POST {WORKER}/comments/<papers|softwares>/<ID>/t  or  /p
+  Headers: Authorization: Bearer <session.access_token>, Content-Type: application/json
+  Body: { "comment": "..." }
+  Success: { ok: true, comment }. Add that comment to the top of the list immediately.
+- DELETE {WORKER}/comments/<papers|softwares>/<ID>/t?id=<comment id>  with the same Authorization header. Show the delete button only on the logged-in user's own comments.
+- Errors come back as { error: "..." } (400, 401, 403, 413, 429). Show that text under the box.
+
+WHO CAN SEE AND WHO CAN WRITE
+- Both boxes are always visible to everyone, including logged-out visitors, and everyone can read all comments in both.
+- Writing is limited by account type, one form per person:
+  - A logged-in verified teacher (profiles.type = 'T', verified = 1) gets the comment form only inside Teachers' Reviews.
+  - A logged-in verified student (profiles.type = 'S', verified = 1) gets the comment form only inside Peers' Reviews.
+- In the other box, show a short hint instead of a form, for example "Only verified students can write here" or "Only verified teachers can write here".
+- Authors of the item (their id is in the row's uid) get no form in either box. Show "Authors cannot review their own work".
+- Logged-out visitors, and logged-in users who are neither verified teachers nor verified students, get no form. Show "Log in as a verified teacher or student to write a review".
+- The form has a character counter (max 1000) and the button is disabled while sending.
+
+RULE FOR ALL PAGES
+Never call fetch() on github.com/.../releases/download links, because browsers block it. Use them only in img src, video src and a href. JSON comes only from raw.githubusercontent.com.
+
+the Json file format:- 
+[{"id":"...","uid":"...","name":"...","comment":"...","at":"2026-11-02T10:15:00Z","profile_link":"https://iterationlab.l.cd/profile/S/slug"}]

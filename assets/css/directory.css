@@ -1603,3 +1603,183 @@
   padding-right: 22px;
 }
 
+/* ==========================================================================
+   Reviews System (Teachers' & Peers' Reviews)
+   ========================================================================== */
+.dir-reviews-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 840px) {
+  .dir-reviews-container {
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+}
+
+.dir-review-box {
+  background-color: var(--bg-subtle, #121824);
+  border: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
+  border-radius: var(--radius-sm, 6px);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dir-review-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  padding-bottom: 12px;
+}
+
+.dir-review-box-title {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--brand-orange, #FF6B00);
+}
+
+.dir-review-box-count {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-muted, #9CA3AF);
+}
+
+.dir-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 440px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.dir-review-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dir-review-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.dir-review-author {
+  font-weight: 600;
+  color: var(--text-main, #FFFFFF);
+  text-decoration: none;
+}
+
+.dir-review-author:hover {
+  color: var(--brand-orange, #FF6B00);
+  text-decoration: underline;
+}
+
+.dir-review-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dir-review-time {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-muted, #9CA3AF);
+}
+
+.dir-review-del-btn {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #EF4444;
+  font-family: var(--font-mono, monospace);
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dir-review-del-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #EF4444;
+}
+
+.dir-review-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary, #D1D5DB);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.dir-review-empty {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-muted, #9CA3AF);
+  padding: 12px 0;
+}
+
+.dir-review-hint {
+  font-size: 12.5px;
+  color: var(--text-muted, #9CA3AF);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin: 0;
+}
+
+.dir-review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.dir-review-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.dir-review-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dir-review-counter {
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-muted, #9CA3AF);
+}
+
+.dir-review-error {
+  color: #EF4444;
+  font-size: 12px;
+  padding: 6px 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 4px;
+}
+
+
