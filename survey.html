@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Student Career & Research Survey — The Iteration Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --ink: #1A2340;
+    --ink-soft: #2D3A58;
+    --cobalt: #2563EB;
+    --cobalt-light: #EEF3FF;
+    --cobalt-mid: #BFCFFF;
+    --slate: #64748B;
+    --slate-light: #94A3B8;
+    --surface: #FFFFFF;
+    --bg: #F5F7FB;
+    --section-bg: #F0F4FF;
+    --border: #DDE3F0;
+    --success: #16A34A;
+    --error: #DC2626;
+    --radio-size: 18px;
+    --progress-h: 4px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #E8EDFB;
+      --ink-soft: #C5CFEA;
+      --cobalt: #6B9EFF;
+      --cobalt-light: #1A2340;
+      --cobalt-mid: #2D3A58;
+      --slate: #94A3B8;
+      --slate-light: #64748B;
+      --surface: #1E2740;
+      --bg: #131A2E;
+      --section-bg: #1A2340;
+      --border: #2D3A58;
+      --success: #4ADE80;
+      --error: #F87171;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #E8EDFB;
+    --ink-soft: #C5CFEA;
+    --cobalt: #6B9EFF;
+    --cobalt-light: #1A2340;
+    --cobalt-mid: #2D3A58;
+    --slate: #94A3B8;
+    --slate-light: #64748B;
+    --surface: #1E2740;
+    --bg: #131A2E;
+    --section-bg: #1A2340;
+    --border: #2D3A58;
+    --success: #4ADE80;
+    --error: #F87171;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Progress bar */
+  .progress-track {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: var(--progress-h);
+    background: var(--border);
+    z-index: 100;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--cobalt);
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* Header */
+  .survey-header {
+    background: var(--ink);
+    color: #fff;
+    padding: 40px 24px 32px;
+    text-align: left;
+  }
+  .survey-header .lab-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--cobalt-mid);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+  .survey-header h1 {
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.25;
+    max-width: 640px;
+    margin-bottom: 12px;
+  }
+  .survey-header p {
+    font-size: 0.9rem;
+    color: #9DAFD4;
+    max-width: 580px;
+    line-height: 1.65;
+  }
+  .header-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .header-meta span {
+    font-size: 0.8rem;
+    color: #9DAFD4;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .header-meta span::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--cobalt);
+    display: inline-block;
+  }
+
+  /* Main content */
+  .survey-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 16px 80px;
+  }
+
+  /* Section headers */
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 36px 0 20px;
+  }
+  .section-label .section-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--cobalt);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-label h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .section-divider {
+    border: none;
+    border-top: 1.5px solid var(--border);
+    margin: 8px 0 0;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 20px 16px;
+    margin-bottom: 12px;
+  }
+  .card.highlight {
+    background: var(--section-bg);
+    border-color: var(--cobalt-mid);
+  }
+
+  label.field-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .field-hint {
+    font-size: 0.78rem;
+    color: var(--slate);
+    margin-top: -4px;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .optional-tag {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--slate-light);
+    margin-left: 6px;
+  }
+
+  /* Inputs */
+  input[type="text"],
+  input[type="email"],
+  select,
+  textarea {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.875rem;
+    color: var(--ink);
+    background: var(--surface);
+    transition: border-color 0.2s;
+    appearance: none;
+    outline: none;
+  }
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--cobalt);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748B' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    cursor: pointer;
+  }
+  textarea {
+    resize: vertical;
+    min-height: 90px;
+  }
+
+  /* Radio / Checkbox groups */
+  .choice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  @media (max-width: 480px) {
+    .choice-grid { grid-template-columns: 1fr; }
+  }
+  .choice-grid.single-col { grid-template-columns: 1fr; }
+
+  .choice-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    background: var(--surface);
+  }
+  .choice-item:hover {
+    border-color: var(--cobalt);
+    background: var(--cobalt-light);
+  }
+  .choice-item input[type="radio"],
+  .choice-item input[type="checkbox"] {
+    width: var(--radio-size);
+    height: var(--radio-size);
+    flex-shrink: 0;
+    margin-top: 1px;
+    accent-color: var(--cobalt);
+    cursor: pointer;
+  }
+  .choice-item span {
+    font-size: 0.84rem;
+    color: var(--ink);
+    line-height: 1.4;
+  }
+  .choice-item.checked {
+    border-color: var(--cobalt);
+    background: var(--cobalt-light);
+  }
+
+  /* Range slider */
+  .slider-wrap { padding: 4px 2px 0; }
+  .slider-track {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+    display: block;
+  }
+  .slider-track::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--cobalt);
+    cursor: pointer;
+    border: 3px solid #fff;
+    box-shadow: 0 1px 6px rgba(37,99,235,0.35);
+    transition: transform 0.1s;
+  }
+  .slider-track::-moz-range-thumb {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--cobalt);
+    cursor: pointer;
+    border: 3px solid #fff;
+    box-shadow: 0 1px 6px rgba(37,99,235,0.35);
+  }
+  .slider-track:active::-webkit-slider-thumb { transform: scale(1.2); }
+  .slider-value-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+  }
+  .slider-ticks {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 2px;
+    margin-top: 4px;
+  }
+  .slider-ticks span {
+    font-size: 0.75rem;
+    color: var(--slate-light);
+    font-weight: 500;
+    width: 20%;
+    text-align: center;
+  }
+  .slider-ticks span:first-child { text-align: left; }
+  .slider-ticks span:last-child { text-align: right; }
+  .slider-current {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--cobalt);
+    min-width: 28px;
+    text-align: center;
+  }
+  .scale-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+  }
+  .scale-labels span { font-size: 0.72rem; color: var(--slate-light); }
+
+  /* Rank select */
+  .rank-select-grid { display: flex; flex-direction: column; gap: 10px; }
+  .rank-row { display: flex; align-items: center; gap: 10px; }
+  .rank-badge {
+    min-width: 38px;
+    height: 32px;
+    background: var(--cobalt);
+    color: #fff;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .rank-select { flex: 1; }
+
+  /* Checkbox multi-select with "other" */
+  .other-input {
+    margin-top: 8px;
+    display: none;
+  }
+  .other-input.visible { display: block; }
+
+  /* Submit */
+  .submit-area {
+    margin-top: 32px;
+    text-align: center;
+  }
+  .submit-btn {
+    display: inline-block;
+    padding: 14px 48px;
+    background: var(--cobalt);
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    min-width: 200px;
+  }
+  .submit-btn:hover { background: #1D4ED8; }
+  .submit-btn:active { transform: scale(0.98); }
+  .submit-btn:disabled { background: var(--slate-light); cursor: not-allowed; }
+
+  .form-note {
+    font-size: 0.78rem;
+    color: var(--slate);
+    margin-top: 12px;
+    line-height: 1.6;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--ink);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 999;
+    transition: transform 0.3s ease;
+    white-space: nowrap;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--error); }
+
+  /* Required star */
+  .req { color: var(--cobalt); margin-left: 2px; }
+
+
+
+  /* Footer */
+  .survey-footer {
+    background: var(--ink);
+    padding: 28px 24px 32px;
+    margin-top: 0;
+  }
+  .survey-footer-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .footer-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cobalt-mid);
+    margin-bottom: 12px;
+  }
+  .footer-names {
+    font-size: 0.78rem;
+    color: #9DAFD4;
+    line-height: 2;
+    word-spacing: 2px;
+  }
+  .footer-brand {
+    margin-top: 16px;
+    font-size: 0.72rem;
+    color: #4A5A7A;
+    font-weight: 500;
+  }
+
+  @media (max-width: 600px) {
+    .survey-header { padding: 32px 16px 24px; }
+    .card { padding: 16px 14px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+<header class="survey-header">
+  <div class="lab-tag">The Iteration Lab · Research Survey</div>
+  <h1>Beyond Government Jobs: Career Aspirations &amp; Research Opportunities in Bangladeshi Higher Education</h1>
+  <p>This survey is part of ongoing research by The Iteration Lab examining the research opportunity gap across public colleges, public universities, and private universities in Bangladesh. Your responses are anonymous and will be used solely for academic analysis.</p>
+  <div class="header-meta">
+    <span>Anonymous &amp; confidential</span>
+    <span>Takes 8–12 minutes</span>
+    <span>25 questions</span>
+  </div>
+</header>
+
+<main class="survey-wrap">
+
+
+
+  <form id="surveyForm" novalidate>
+
+    <!-- SECTION A: Identity -->
+    <div class="section-label">
+      <div class="section-num">A</div>
+      <h2>Your Institution</h2>
+    </div>
+    <hr class="section-divider">
+
+    <div class="card">
+      <label class="field-label" for="student_name">Your full name <span class="req">*</span></label>
+      <input type="text" id="student_name" name="student_name" placeholder="e.g. Md. Rafiqul Islam" required>
+    </div>
+
+    <div class="card">
+      <label class="field-label" for="college_id">College / University ID number <span class="req">*</span></label>
+      <p class="field-hint">Your student registration or roll number as given by your institution.</p>
+      <input type="text" id="college_id" name="college_id" placeholder="e.g. 20210101234" required>
+    </div>
+
+    <div class="card">
+      <label class="field-label" for="institution_name">Name of your institution <span class="req">*</span></label>
+      <input type="text" id="institution_name" name="institution_name" placeholder="e.g. Chittagong College, BUET, East West University" required>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Institution type <span class="req">*</span></label>
+      <div class="choice-grid single-col" id="institution_type_group">
+        <label class="choice-item"><input type="radio" name="institution_type" value="NU-affiliated college"><span>NU-affiliated public college</span></label>
+        <label class="choice-item"><input type="radio" name="institution_type" value="Public university"><span>Public university</span></label>
+        <label class="choice-item"><input type="radio" name="institution_type" value="Private university"><span>Private university</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label" for="department">Department / Subject <span class="req">*</span></label>
+      <input type="text" id="department" name="department" placeholder="e.g. Physics, CSE, Mechanical Engineering" required>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Year of study <span class="req">*</span></label>
+      <div class="choice-grid" id="study_year_group">
+        <label class="choice-item"><input type="radio" name="study_year" value="1st year"><span>1st year</span></label>
+        <label class="choice-item"><input type="radio" name="study_year" value="2nd year"><span>2nd year</span></label>
+        <label class="choice-item"><input type="radio" name="study_year" value="3rd year"><span>3rd year</span></label>
+        <label class="choice-item"><input type="radio" name="study_year" value="4th year"><span>4th year</span></label>
+        <label class="choice-item"><input type="radio" name="study_year" value="Masters"><span>Master's</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Gender <span class="optional-tag">optional</span></label>
+      <div class="choice-grid" id="gender_group">
+        <label class="choice-item"><input type="radio" name="gender" value="Male"><span>Male</span></label>
+        <label class="choice-item"><input type="radio" name="gender" value="Female"><span>Female</span></label>
+        <label class="choice-item"><input type="radio" name="gender" value="Non-binary"><span>Non-binary</span></label>
+        <label class="choice-item"><input type="radio" name="gender" value="Prefer not to say"><span>Prefer not to say</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Family monthly income (approximate range) <span class="req">*</span></label>
+      <p class="field-hint">Select the range closest to your family's total monthly household income.</p>
+      <select id="socioeconomic_background" name="socioeconomic_background" required>
+        <option value="" disabled selected>Select a range</option>
+        <option value="Below ৳10,000">Below ৳10,000</option>
+        <option value="৳10,000–৳25,000">৳10,000–৳25,000</option>
+        <option value="৳25,000–৳50,000">৳25,000–৳50,000</option>
+        <option value="৳50,000–৳1,00,000">৳50,000–৳1,00,000</option>
+        <option value="Above ৳1,00,000">Above ৳1,00,000</option>
+        <option value="Prefer not to say">Prefer not to say</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Are you the first in your family to attend higher education? <span class="optional-tag">optional</span></label>
+      <div class="choice-grid" id="first_gen_group">
+        <label class="choice-item"><input type="radio" name="first_generation" value="Yes"><span>Yes</span></label>
+        <label class="choice-item"><input type="radio" name="first_generation" value="No"><span>No</span></label>
+        <label class="choice-item"><input type="radio" name="first_generation" value="Not sure"><span>Not sure</span></label>
+      </div>
+    </div>
+
+
+    <!-- SECTION B: Career -->
+    <div class="section-label">
+      <div class="section-num">B</div>
+      <h2>Career Aspirations</h2>
+    </div>
+    <hr class="section-divider">
+
+    <div class="card">
+      <label class="field-label">Rank your top 3 career paths <span class="req">*</span></label>
+      <p class="field-hint">For each rank, select one option. Each option can only be selected once.</p>
+      <div class="rank-select-grid">
+        <div class="rank-row">
+          <div class="rank-badge">1st</div>
+          <select class="rank-select" id="rank_1" data-rank="1">
+            <option value="" disabled selected>Choose your 1st choice</option>
+            <option value="Government job">Government job (BCS, bank, public sector)</option>
+            <option value="Private sector job">Private sector job</option>
+            <option value="Research / science career">Research / science career</option>
+            <option value="Academia (teaching/lecturing)">Academia (teaching / lecturing)</option>
+            <option value="Entrepreneurship">Entrepreneurship / own business</option>
+            <option value="Higher studies abroad">Higher studies abroad</option>
+            <option value="Freelancing / remote work">Freelancing / remote work</option>
+          </select>
+        </div>
+        <div class="rank-row">
+          <div class="rank-badge">2nd</div>
+          <select class="rank-select" id="rank_2" data-rank="2">
+            <option value="" disabled selected>Choose your 2nd choice</option>
+            <option value="Government job">Government job (BCS, bank, public sector)</option>
+            <option value="Private sector job">Private sector job</option>
+            <option value="Research / science career">Research / science career</option>
+            <option value="Academia (teaching/lecturing)">Academia (teaching / lecturing)</option>
+            <option value="Entrepreneurship">Entrepreneurship / own business</option>
+            <option value="Higher studies abroad">Higher studies abroad</option>
+            <option value="Freelancing / remote work">Freelancing / remote work</option>
+          </select>
+        </div>
+        <div class="rank-row">
+          <div class="rank-badge">3rd</div>
+          <select class="rank-select" id="rank_3" data-rank="3">
+            <option value="" disabled selected>Choose your 3rd choice</option>
+            <option value="Government job">Government job (BCS, bank, public sector)</option>
+            <option value="Private sector job">Private sector job</option>
+            <option value="Research / science career">Research / science career</option>
+            <option value="Academia (teaching/lecturing)">Academia (teaching / lecturing)</option>
+            <option value="Entrepreneurship">Entrepreneurship / own business</option>
+            <option value="Higher studies abroad">Higher studies abroad</option>
+            <option value="Freelancing / remote work">Freelancing / remote work</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Why is a government job attractive to you? <span class="optional-tag">select all that apply</span></label>
+      <p class="field-hint">Skip if government employment is not a priority for you.</p>
+      <div class="choice-grid" id="govt_motivation_group">
+        <label class="choice-item"><input type="checkbox" name="government_job_motivation" value="Job security"><span>Job security</span></label>
+        <label class="choice-item"><input type="checkbox" name="government_job_motivation" value="Social prestige"><span>Social prestige</span></label>
+        <label class="choice-item"><input type="checkbox" name="government_job_motivation" value="Pension and benefits"><span>Pension &amp; benefits</span></label>
+        <label class="choice-item"><input type="checkbox" name="government_job_motivation" value="Family expectation"><span>Family expectation</span></label>
+        <label class="choice-item"><input type="checkbox" name="government_job_motivation" value="Limited private sector options"><span>Limited private sector options</span></label>
+        <label class="choice-item"><input type="checkbox" name="government_job_motivation" value="It is not a priority"><span>It is not a priority for me</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">What most influences your career decisions? <span class="req">*</span></label>
+      <p class="field-hint">Select up to 3.</p>
+      <div class="choice-grid" id="career_influences_group">
+        <label class="choice-item"><input type="checkbox" name="career_influences" value="Family expectations" data-max="3"><span>Family expectations</span></label>
+        <label class="choice-item"><input type="checkbox" name="career_influences" value="Financial security" data-max="3"><span>Financial security</span></label>
+        <label class="choice-item"><input type="checkbox" name="career_influences" value="Social prestige" data-max="3"><span>Social prestige</span></label>
+        <label class="choice-item"><input type="checkbox" name="career_influences" value="Personal interest" data-max="3"><span>Personal interest / passion</span></label>
+        <label class="choice-item"><input type="checkbox" name="career_influences" value="Teachers or mentors" data-max="3"><span>Teachers or mentors</span></label>
+        <label class="choice-item"><input type="checkbox" name="career_influences" value="Peers and friends" data-max="3"><span>Peers and friends</span></label>
+        <label class="choice-item"><input type="checkbox" name="career_influences" value="Job market demand" data-max="3"><span>Job market demand</span></label>
+        <label class="choice-item"><input type="checkbox" name="career_influences" value="Media / social media" data-max="3"><span>Media / social media</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">How interested are you in starting your own business? <span class="req">*</span></label>
+      <div class="slider-wrap">
+        <input type="range" class="slider-track" id="entrepreneurship_interest" name="entrepreneurship_interest" min="1" max="5" step="1" value="3">
+        <div class="slider-ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+        <div class="scale-labels"><span>Not at all</span><span class="slider-current" id="entrepreneurship_interest_val">3</span><span>Very interested</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Is supporting your family financially a factor in your career decisions? <span class="req">*</span></label>
+      <div class="choice-grid single-col" id="financial_dep_group">
+        <label class="choice-item"><input type="radio" name="financial_dependency_pressure" value="Yes, strongly"><span>Yes, strongly — it is a primary driver</span></label>
+        <label class="choice-item"><input type="radio" name="financial_dependency_pressure" value="Somewhat"><span>Somewhat — it influences but does not decide</span></label>
+        <label class="choice-item"><input type="radio" name="financial_dependency_pressure" value="Not much"><span>Not much</span></label>
+        <label class="choice-item"><input type="radio" name="financial_dependency_pressure" value="No"><span>No</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Would you relocate to another city or country for a better research or career opportunity? <span class="req">*</span></label>
+      <div class="choice-grid" id="relocate_group">
+        <label class="choice-item"><input type="radio" name="willingness_to_relocate" value="Yes, within Bangladesh"><span>Yes, within Bangladesh</span></label>
+        <label class="choice-item"><input type="radio" name="willingness_to_relocate" value="Yes, abroad"><span>Yes, abroad</span></label>
+        <label class="choice-item"><input type="radio" name="willingness_to_relocate" value="Yes, both"><span>Yes, both options</span></label>
+        <label class="choice-item"><input type="radio" name="willingness_to_relocate" value="No"><span>No</span></label>
+        <label class="choice-item"><input type="radio" name="willingness_to_relocate" value="Unsure"><span>Unsure</span></label>
+      </div>
+    </div>
+
+
+    <!-- SECTION C: Research -->
+    <div class="section-label">
+      <div class="section-num">C</div>
+      <h2>Research Experience &amp; Interest</h2>
+    </div>
+    <hr class="section-divider">
+
+    <div class="card">
+      <label class="field-label">How interested are you in a research or scientific career? <span class="req">*</span></label>
+      <div class="slider-wrap">
+        <input type="range" class="slider-track" id="research_interest" name="research_interest" min="1" max="5" step="1" value="3">
+        <div class="slider-ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+        <div class="scale-labels"><span>Not interested</span><span class="slider-current" id="research_interest_val">3</span><span>Very interested</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Have you participated in any research project or study? <span class="req">*</span></label>
+      <div class="choice-grid" id="research_exp_group">
+        <label class="choice-item"><input type="radio" name="research_experience" value="Yes, formal (published or supervised)"><span>Yes — formal (published or supervised)</span></label>
+        <label class="choice-item"><input type="radio" name="research_experience" value="Yes, informal (self-initiated)"><span>Yes — informal / self-initiated</span></label>
+        <label class="choice-item"><input type="radio" name="research_experience" value="No, but interested"><span>No, but I am interested</span></label>
+        <label class="choice-item"><input type="radio" name="research_experience" value="No, not interested"><span>No, and I am not interested</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Which research resources does your institution give you access to? <span class="optional-tag">select all that apply</span></label>
+      <div class="choice-grid" id="research_access_group">
+        <label class="choice-item"><input type="checkbox" name="research_opportunity_access" value="Research lab"><span>Research lab</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_opportunity_access" value="Research club"><span>Research club / society</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_opportunity_access" value="Mentors"><span>Research mentors</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_opportunity_access" value="Academic journal access"><span>Academic journal access</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_opportunity_access" value="Funding or grants"><span>Funding or grants</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_opportunity_access" value="Conference exposure"><span>Conference / seminar exposure</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_opportunity_access" value="None of the above"><span>None of the above</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">What barriers prevent you from engaging in research? <span class="optional-tag">select all that apply</span></label>
+      <div class="choice-grid" id="barriers_group">
+        <label class="choice-item"><input type="checkbox" name="research_participation_barriers" value="No mentors"><span>No mentors or guidance</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_participation_barriers" value="No funding"><span>No funding</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_participation_barriers" value="No facilities"><span>No labs or facilities</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_participation_barriers" value="Lack of knowledge"><span>Don't know how to start</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_participation_barriers" value="Time constraints"><span>Time constraints</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_participation_barriers" value="No opportunities"><span>No visible opportunities</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_participation_barriers" value="Not relevant to career"><span>Doesn't seem career-relevant</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_participation_barriers" value="No internet / device access"><span>No internet / device access</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Which of these research tools or platforms have you heard of? <span class="req">*</span></label>
+      <p class="field-hint">Measures awareness — not whether you use them.</p>
+      <div class="choice-grid" id="awareness_group">
+        <label class="choice-item"><input type="checkbox" name="research_awareness" value="Google Scholar"><span>Google Scholar</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_awareness" value="ResearchGate"><span>ResearchGate</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_awareness" value="Bangladesh journals (BJSIR, etc.)"><span>Bangladeshi journals (BJSIR etc.)</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_awareness" value="NSDI Bangladesh"><span>NSDI Bangladesh</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_awareness" value="Scopus / Web of Science"><span>Scopus / Web of Science</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_awareness" value="ORCID"><span>ORCID</span></label>
+        <label class="choice-item"><input type="checkbox" name="research_awareness" value="None of these"><span>None of these</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Do you personally know a researcher or academic you look up to? <span class="req">*</span></label>
+      <div class="choice-grid" id="role_model_group">
+        <label class="choice-item"><input type="radio" name="role_model_in_research" value="Yes, at my institution"><span>Yes, at my institution</span></label>
+        <label class="choice-item"><input type="radio" name="role_model_in_research" value="Yes, outside my institution"><span>Yes, outside my institution</span></label>
+        <label class="choice-item"><input type="radio" name="role_model_in_research" value="No"><span>No</span></label>
+      </div>
+    </div>
+
+
+    <!-- SECTION D: Technology Access -->
+    <div class="section-label">
+      <div class="section-num">D</div>
+      <h2>Digital Access</h2>
+    </div>
+    <hr class="section-divider">
+
+    <div class="card">
+      <label class="field-label">What device do you primarily use for academic work? <span class="req">*</span></label>
+      <div class="choice-grid" id="device_group">
+        <label class="choice-item"><input type="radio" name="digital_device_access" value="Smartphone only"><span>Smartphone only</span></label>
+        <label class="choice-item"><input type="radio" name="digital_device_access" value="Shared/borrowed PC"><span>Shared or borrowed PC</span></label>
+        <label class="choice-item"><input type="radio" name="digital_device_access" value="Personal laptop"><span>Personal laptop</span></label>
+        <label class="choice-item"><input type="radio" name="digital_device_access" value="Desktop PC (own)"><span>Personal desktop PC</span></label>
+        <label class="choice-item"><input type="radio" name="digital_device_access" value="Lab/university PC"><span>Lab / university computer</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">How would you describe your daily internet access? <span class="req">*</span></label>
+      <div class="choice-grid single-col" id="internet_group">
+        <label class="choice-item"><input type="radio" name="internet_access_quality" value="No access"><span>No access or very rarely</span></label>
+        <label class="choice-item"><input type="radio" name="internet_access_quality" value="Limited (mobile data, expensive)"><span>Limited — mobile data only, expensive</span></label>
+        <label class="choice-item"><input type="radio" name="internet_access_quality" value="Moderate (some WiFi)"><span>Moderate — sometimes WiFi available</span></label>
+        <label class="choice-item"><input type="radio" name="internet_access_quality" value="Stable (WiFi or broadband)"><span>Stable — regular WiFi or broadband</span></label>
+      </div>
+    </div>
+
+
+    <!-- SECTION E: Institutional Assessment -->
+    <div class="section-label">
+      <div class="section-num">E</div>
+      <h2>Your Institution's Support</h2>
+    </div>
+    <hr class="section-divider">
+
+    <div class="card">
+      <label class="field-label">How would you rate your institution's support for student research? <span class="req">*</span></label>
+      <div class="slider-wrap">
+        <input type="range" class="slider-track" id="institutional_research_support" name="institutional_research_support" min="1" max="5" step="1" value="3">
+        <div class="slider-ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>
+        <div class="scale-labels"><span>No support at all</span><span class="slider-current" id="institutional_research_support_val">3</span><span>Excellent support</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">What changes would most improve research opportunities at your institution? <span class="optional-tag">select up to 3</span></label>
+      <div class="choice-grid" id="changes_group">
+        <label class="choice-item"><input type="checkbox" name="desired_institutional_changes" value="Dedicated research lab"><span>Dedicated research lab</span></label>
+        <label class="choice-item"><input type="checkbox" name="desired_institutional_changes" value="Student research funding"><span>Student research funding</span></label>
+        <label class="choice-item"><input type="checkbox" name="desired_institutional_changes" value="Research mentorship programs"><span>Research mentorship programs</span></label>
+        <label class="choice-item"><input type="checkbox" name="desired_institutional_changes" value="Access to international journals"><span>Access to international journals</span></label>
+        <label class="choice-item"><input type="checkbox" name="desired_institutional_changes" value="Research clubs or societies"><span>Research clubs or societies</span></label>
+        <label class="choice-item"><input type="checkbox" name="desired_institutional_changes" value="Conference participation support"><span>Conference participation support</span></label>
+        <label class="choice-item"><input type="checkbox" name="desired_institutional_changes" value="Better internet access on campus"><span>Better internet access on campus</span></label>
+        <label class="choice-item"><input type="checkbox" name="desired_institutional_changes" value="Curriculum with research component"><span>Curriculum with research component</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="field-label">Any additional thoughts? <span class="optional-tag">optional</span></label>
+      <p class="field-hint">Share anything about your career aspirations, your institution, or research opportunities that the questions above didn't capture.</p>
+      <textarea id="additional_comments" name="additional_comments" placeholder="Your thoughts here..."></textarea>
+    </div>
+
+    <div class="submit-area">
+      <button type="button" class="submit-btn" id="submitBtn">Submit response</button>
+      <p class="form-note">Your response is anonymous. No name, email, or ID is collected.<br>Data is used only for academic research by The Iteration Lab.</p>
+    </div>
+
+  </form>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<footer class="survey-footer">
+  <div class="survey-footer-inner">
+    <div class="footer-label">Research Team</div>
+    <div class="footer-names">
+      A. R. Soud &bull; N. J. Alife &bull; M. I. Prapty &bull; R. J. Mishkat &bull; R. T. Arshi &bull; T. B. Kibria &bull; R. J. Reny &bull; T. Y. Any &bull; A. Das &bull; B. Das &bull; U. Hafsa &bull; M. K. Ruhi &bull; Md. M. Kabir &bull; M. J. Chy &bull; Md. Reduan &bull; N. Sultana &bull; N. A. Tina &bull; S. N. Taspia &bull; N. A. Mamtaz &bull; P. J. Suma &bull; M. A. Mim &bull; S. A. Sami &bull; S. S. Priya &bull; S. Sultana &bull; S. Hoque &bull; S. Nasrin &bull; Mst. Farzana &bull; R. Sultana &bull; S. Y. Eva &bull; Ikramul H. A.
+    </div>
+    <div class="footer-brand">© The Iteration Lab</div>
+  </div>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+// ============================================================
+const SUPABASE_URL = 'https://wdphysflyyqlhqvybhix.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkcGh5c2ZseXlxbGhxdnliaGl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxMzQ2MTcsImV4cCI6MjEwOTcxMDYxN30.qN20KSqpMJHyE9FrgdBdwY9Er8zBwCfLIG_C9dU6pys';
+// Publishable key (alternative): sb_publishable_z64z0P4Ma5O28pBCw554Kg_Glg9r7-U
+// ============================================================
+
+let supabase;
+try {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch(e) {
+  showError('Supabase failed to load: ' + e.message);
+}
+
+
+
+// ---- Utility ----
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 5000);
+}
+
+function showError(msg) {
+  let box = document.getElementById('errorBox');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'errorBox';
+    box.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#DC2626;color:#fff;padding:14px 20px;border-radius:8px;font-size:0.85rem;max-width:90vw;z-index:9999;line-height:1.5;white-space:pre-wrap;word-break:break-word;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+    document.body.appendChild(box);
+  }
+  box.textContent = '❌ ' + msg;
+  box.style.display = 'block';
+  setTimeout(() => { if(box) box.style.display = 'none'; }, 8000);
+}
+
+function generateId() {
+  return 'ILR-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
+}
+
+// ---- Progress ----
+function updateProgress() {
+  const required = document.querySelectorAll('[required], [data-required]');
+  let filled = 0;
+  const groups = new Set();
+  document.querySelectorAll('input[type="radio"]:checked, input[type="checkbox"]:checked').forEach(el => {
+    groups.add(el.name);
+  });
+  document.querySelectorAll('input[type="text"][required], select[required], textarea[required]').forEach(el => {
+    if (el.value.trim()) filled++;
+  });
+  // sliders always have a value — count all 3
+  filled += 3;
+  const totalRequired = 15;
+  const pct = Math.min(100, Math.round(((groups.size + filled) / totalRequired) * 100));
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+document.addEventListener('change', updateProgress);
+document.addEventListener('input', updateProgress);
+
+// ---- Radio/Checkbox visual feedback ----
+document.querySelectorAll('.choice-item input').forEach(input => {
+  input.addEventListener('change', () => {
+    if (input.type === 'radio') {
+      document.querySelectorAll(`input[name="${input.name}"]`).forEach(r => {
+        r.closest('.choice-item').classList.remove('checked');
+      });
+    }
+    if (input.checked) input.closest('.choice-item').classList.add('checked');
+    else input.closest('.choice-item').classList.remove('checked');
+  });
+});
+
+// ---- Range sliders ----
+['research_interest', 'entrepreneurship_interest', 'institutional_research_support'].forEach(id => {
+  const el = document.getElementById(id);
+  const display = document.getElementById(id + '_val');
+  if (!el) return;
+  // Update fill color on track
+  function updateTrack() {
+    const pct = ((el.value - 1) / 4) * 100;
+    el.style.background = `linear-gradient(to right, var(--cobalt) ${pct}%, var(--border) ${pct}%)`;
+    if (display) display.textContent = el.value;
+    updateProgress();
+  }
+  el.addEventListener('input', updateTrack);
+  updateTrack(); // init
+});
+
+// ---- Rank select deduplication ----
+document.querySelectorAll('.rank-select').forEach(sel => {
+  sel.addEventListener('change', function() {
+    const selected = [...document.querySelectorAll('.rank-select')]
+      .filter(s => s !== this && s.value)
+      .map(s => s.value);
+    if (selected.includes(this.value)) {
+      showToast('Each career path can only be ranked once.');
+      this.value = '';
+    }
+    updateProgress();
+  });
+});
+
+// ---- Checkbox max limit ----
+document.querySelectorAll('input[data-max]').forEach(cb => {
+  cb.addEventListener('change', function() {
+    const max = parseInt(this.dataset.max);
+    const checked = document.querySelectorAll(`input[name="${this.name}"]:checked`);
+    if (checked.length > max) { this.checked = false; this.closest('.choice-item').classList.remove('checked'); showToast(`Select up to ${max} options.`); }
+  });
+});
+
+// ---- Collect form data ----
+function collectData() {
+  const getRadio = name => {
+    const el = document.querySelector(`input[name="${name}"]:checked`);
+    return el ? el.value : null;
+  };
+  const getCheckboxes = name =>
+    [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(el => el.value);
+  const getText = id => document.getElementById(id)?.value.trim() || null;
+  const getScale = id => {
+    const v = document.getElementById(id)?.value;
+    return v ? parseInt(v) : 3;
+  };
+  const careerRanked = [
+    document.getElementById('rank_1')?.value || null,
+    document.getElementById('rank_2')?.value || null,
+    document.getElementById('rank_3')?.value || null,
+  ].filter(Boolean);
+
+  return {
+    student_id: generateId(),
+    student_name: getText('student_name'),
+    college_id: getText('college_id'),
+    institution_name: getText('institution_name'),
+    institution_type: getRadio('institution_type'),
+    department: getText('department'),
+    study_year: getRadio('study_year'),
+    gender: getRadio('gender'),
+    socioeconomic_background: getText('socioeconomic_background'),
+    first_generation: getRadio('first_generation'),
+    career_rank_top3: JSON.stringify(careerRanked),
+    government_job_motivation: JSON.stringify(getCheckboxes('government_job_motivation')),
+    career_influences: JSON.stringify(getCheckboxes('career_influences')),
+    entrepreneurship_interest: getScale('entrepreneurship_interest'),
+    financial_dependency_pressure: getRadio('financial_dependency_pressure'),
+    willingness_to_relocate: getRadio('willingness_to_relocate'),
+    research_interest: getScale('research_interest'),
+    research_experience: getRadio('research_experience'),
+    research_opportunity_access: JSON.stringify(getCheckboxes('research_opportunity_access')),
+    research_participation_barriers: JSON.stringify(getCheckboxes('research_participation_barriers')),
+    research_awareness: JSON.stringify(getCheckboxes('research_awareness')),
+    role_model_in_research: getRadio('role_model_in_research'),
+    digital_device_access: getRadio('digital_device_access'),
+    internet_access_quality: getRadio('internet_access_quality'),
+    institutional_research_support: getScale('institutional_research_support'),
+    desired_institutional_changes: JSON.stringify(getCheckboxes('desired_institutional_changes')),
+    additional_comments: getText('additional_comments'),
+    submitted_at: new Date().toISOString()
+  };
+}
+
+// ---- Validation ----
+function validate(data) {
+  const required = [
+    ['student_name', 'Your full name'],
+    ['college_id', 'College / University ID number'],
+    ['institution_name', 'Institution name'],
+    ['institution_type', 'Institution type'],
+    ['department', 'Department'],
+    ['study_year', 'Year of study'],
+    ['socioeconomic_background', 'Family income range'],
+    ['financial_dependency_pressure', 'Financial dependency question'],
+    ['willingness_to_relocate', 'Willingness to relocate'],
+
+    ['research_experience', 'Research experience'],
+    ['role_model_in_research', 'Role model in research'],
+    ['digital_device_access', 'Primary device'],
+    ['internet_access_quality', 'Internet access'],
+
+    ['career_influences', 'Career influences'],
+  ];
+  if (data.career_rank_top3 === '[]' || JSON.parse(data.career_rank_top3).length < 3) {
+    return 'Please select all 3 career path rankings.';
+  }
+  for (const [key, label] of required) {
+    const val = data[key];
+    if (!val || val === 'null' || val === '[]') {
+      return `Please answer: "${label}"`;
+    }
+  }
+  return null;
+}
+
+// ---- Submit ----
+document.getElementById('submitBtn').addEventListener('click', async function() {
+  const data = collectData();
+  const err = validate(data);
+  if (err) { showError(err); return; }
+
+  if (!supabase) { showError('Supabase not initialized. Check credentials.'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    const result = await supabase.from('survey_responses').insert([data]);
+    if (result.error) throw result.error;
+
+    btn.textContent = 'Submitted ✓';
+    document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('surveyForm').style.opacity = '0.5';
+    document.getElementById('surveyForm').style.pointerEvents = 'none';
+    document.getElementById('surveyForm').insertAdjacentHTML('afterend',
+      '<div style="text-align:center;padding:48px 20px;font-size:1.1rem;color:var(--cobalt);font-weight:700;letter-spacing:-0.01em;">✓ Your response has been recorded.<br><span style="font-size:0.9rem;font-weight:400;color:var(--slate)">Thank you for contributing to this research.</span></div>'
+    );
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  } catch (err) {
+    console.error('Supabase error:', err);
+    showError('Could not save response.\n\nReason: ' + (err.message || JSON.stringify(err)));
+    btn.disabled = false;
+    btn.textContent = 'Submit response';
+  }
+});
+
+}); // end DOMContentLoaded
+</script>
+</body>
+</html>
